@@ -28,7 +28,13 @@ numbers for when and where the object would be available
 * https://ourcodeworld.com/articles/read/273/how-to-create-an-executable-exe-from-a-python-script-in-windows-using-pyinstaller
 
 ## Brainstorming
-* 
+* accuweather has lots of info
+    * https://developer.accuweather.com/apis
+    * locations to get geo coords if needed
+        * https://developer.accuweather.com/accuweather-locations-api/apis
+    * get current conditions
+        * https://developer.accuweather.com/accuweather-current-conditions-api/apis
+    
 
 
 # Python readme suggestions
