@@ -1,12 +1,3 @@
-
-
-
-
-
-
-
-
-
 import astropy.units as u
 import numpy as np
 from astropy.time import Time
@@ -15,7 +6,7 @@ from astropy.coordinates import SkyCoord, EarthLocation, AltAz, solar_system, ge
 
 def check_sky_tonight(obj):
     sky_obj = SkyCoord.from_name(obj)
-    my_house = EarthLocation(lat=41u.deg, lon=-73*u.deg, height=85*u.m)
+    my_house = EarthLocation(lat=41*u.deg, lon=-73*u.deg, height=85*u.m)
     utcoffset = -4*u.hour  # Eastern Daylight Time
     time = Time('2020-10-11 20:00:00') - utcoffset
     midnight = Time('2020-10-11 00:00:00') - utcoffset
@@ -34,11 +25,11 @@ def check_sky_tonight(obj):
         if altitude.is_within_bounds(25 * u.deg, 90 * u.deg) and omin == '00':
             print("{3} - a:{0} z:{1} o:{2} - {4} - {5} - {6}".format(d, zstr, altaz.obstime, obj, d, ohour, omin))
         # if int(altitude) > 25:
-        #print("a:{0} z:{1} o:{2}".format(altaz.alt, altaz.az, altaz.obstime))
+        # print("a:{0} z:{1} o:{2}".format(altaz.alt, altaz.az, altaz.obstime))
 
 
 def try_sat():
-    #need to try to tune this for multiple planets and times
+    # need to try to tune this for multiple planets and times
     midnight = Time('2020-10-11 00:00:00')
     saturn = get_body('saturn', midnight)
     my_house = EarthLocation(lat=41.16 * u.deg, lon=-73.42 * u.deg, height=85 * u.m)
