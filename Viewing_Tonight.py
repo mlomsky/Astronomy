@@ -87,8 +87,11 @@ class Viewing:
             zstr = zsign + zd
             ohour = str(altaz.obstime)[11:13]
             omin = str(altaz.obstime)[14:16]
+            # need to modify code here to limit to dark hours on day
+            # possible enhancement to make code use times of sun to know when dark
             if altitude.is_within_bounds(25 * u.deg, 90 * u.deg) and omin == '00':
                 print("{3} - a:{0} z:{1} o:{2} - {4} - {5} - {6}".format(d, zstr, altaz.obstime, obj, d, ohour, omin))
+                # make html report for this
 
 
 def main():
@@ -96,7 +99,9 @@ def main():
     viewing_location = Location()
     viewing_targets = Targets()
 
-    # try viewing program
+    # Maybe add here get sun data and when sun alt < 0 degrees
+    # use that to limit check sky to only those dark hours and mark twilight hours
+    # to viewing program
     scan_sky = Viewing(viewing_location.data["lat"], viewing_location.data["long"],
                        viewing_location.data["viewing_date"], viewing_location.data["name"],
                        viewing_location.data["height"])
@@ -107,6 +112,7 @@ def main():
                 m_id = "m" + str(m_num)
                 scan_sky.check_sky_tonight(m_id)
 
+    # need to check API for caldwell list objects and other lists
     # for dso in viewing_targets.data["target_list"]:
         # scan_sky.check_sky_tonight(dso)
 
