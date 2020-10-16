@@ -27,6 +27,7 @@ import smtplib
 import ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import datetime
 
 
 class Mail:  # need to add lots of error checking in the functions here
@@ -116,7 +117,7 @@ class Viewing:
     def __init__(self, lat, long, date, name, height):
         self.lat = lat
         self.long = long
-        self.date = date
+        self.date = self.fix_date(date)
         self.site_name = name
         self.height = height
         self.viewing_location = EarthLocation(lat=self.lat * u.deg, lon=self.long * u.deg, height=self.height * u.m)
@@ -128,17 +129,26 @@ class Viewing:
         self.viewing_frame = AltAz(obstime=self.viewing_times, location=self.viewing_location)
         self.html = html_header(self.site_name, self.date)
 
+    def fix_date(self, date):
+        # This function pushes the date forward 1 day to account for the fact that my calculations should be from
+        # midnight on the date provided
+        yr = int(date[0:4])
+        m = int(date[5:7])
+        d = int(date[8:10])
+        return datetime.date(yr, m, d) + datetime.timedelta(1)
+
     def check_sky_tonight(self, obj):
         sky_obj = SkyCoord.from_name(obj)
         sky_objaltazs_viewing_date = sky_obj.transform_to(self.viewing_frame)
 
         last_hour = 999
+        print(" obj,alt, az, altaz.obstime, ohour, omin")
         for altaz in sky_objaltazs_viewing_date: # need to parallelize this at some point
             altitude = altaz.alt
             (sign, d, m, s)  = altitude.signed_dms
             (zsign, zd, zm, zs) = altaz.az.signed_dms
             zstr = zsign + zd
-            ohour = str(altaz.obstime)[11:13]   #  obs_time is in utc ... need to adjust that with utc ofset date and time
+            ohour = str(altaz.obstime)[11:13]
             omin = str(altaz.obstime)[14:16]
             odate = str(altaz.obstime)[0:10]
             # need to modify code here to limit to dark hours on day
@@ -153,11 +163,11 @@ class Viewing:
                 skip_print = True
             last_hour = ohour
             if altitude.is_within_bounds(20 * u.deg, 90 * u.deg) and not skip_print:
+                obs_date, obs_hour = un_utc(odate, ohour)
                 self.html += "<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}&#730;</td><td>{4}&#730;</td></tr>\n"\
-                    .format(obj, odate, ohour, d, zstr)
-                print("{3} - a:{0} z:{1} o:{2} - {4} - {5} - {6}".format(d, zstr, altaz.obstime, obj, d, ohour, omin))
+                    .format(obj, obs_date, obs_hour, d, zstr)
+                print("{3} - a:{0} z:{1} o:{2} - {4} - {5} ".format(d, zstr, obs_date, obj, obs_hour, omin))
                 # make html report for this
-
 
     def write_out_html(self):
         with open('astronomy_report.html', 'w') as f:
@@ -165,6 +175,19 @@ class Viewing:
 
     def add_footer(self):
         self.html += html_footer()
+
+
+def un_utc(date, hour):
+    local_hour = int(hour) - 4
+    if local_hour < 0:
+        local_hour += 24
+        yr = int(date[0:4])
+        m = int(date[5:7])
+        d = int(date[8:10])
+        new_date = datetime.date(yr, m, d) - datetime.timedelta(1)
+    else:
+        new_date = date
+    return str(new_date), local_hour
 
 
 def html_footer():
@@ -204,8 +227,8 @@ def main():
             for m_num in range(1,scan_sky.messier_max):
                 m_id = "m" + str(m_num)
                 scan_sky.check_sky_tonight(m_id)
-                if m_num > 1:
-                    sys.exit()
+                #if m_num > 1:
+                 #   sys.exit()
 
     scan_sky.add_footer()
     scan_sky.write_out_html()
