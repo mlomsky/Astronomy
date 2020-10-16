@@ -123,7 +123,7 @@ class Viewing:
         self.utcoffset = -4 * u.hour  # Eastern Daylight Time
         self.viewing_date_midnight_time = self.date + ' 00:00:00'
         self.midnight = Time(self.viewing_date_midnight_time) - self.utcoffset
-        self.delta_midnight = np.linspace(-6, 6, 1000)*u.hour  # tune this to actual sunrise / sunset ... get that
+        self.delta_midnight = np.linspace(-6, 6, 500)*u.hour  # tune this to actual sunrise / sunset ... get that
         self.viewing_times = self.midnight + self.delta_midnight
         self.viewing_frame = AltAz(obstime=self.viewing_times, location=self.viewing_location)
         self.html = html_header(self.site_name, self.date)
@@ -132,21 +132,32 @@ class Viewing:
         sky_obj = SkyCoord.from_name(obj)
         sky_objaltazs_viewing_date = sky_obj.transform_to(self.viewing_frame)
 
+        last_hour = 999
         for altaz in sky_objaltazs_viewing_date: # need to parallelize this at some point
             altitude = altaz.alt
             (sign, d, m, s)  = altitude.signed_dms
             (zsign, zd, zm, zs) = altaz.az.signed_dms
             zstr = zsign + zd
-            ohour = str(altaz.obstime)[11:13]
+            ohour = str(altaz.obstime)[11:13]   #  obs_time is in utc ... need to adjust that with utc ofset date and time
             omin = str(altaz.obstime)[14:16]
             odate = str(altaz.obstime)[0:10]
             # need to modify code here to limit to dark hours on day
             # possible enhancement to make code use times of sun to know when dark
-            if altitude.is_within_bounds(25 * u.deg, 90 * u.deg) and omin == '00':
+            skip_print = True
+            if 0 <= int(omin) < 5:
+                if ohour == last_hour:
+                    skip_print = True
+                else:
+                    skip_print = False
+            else:
+                skip_print = True
+            last_hour = ohour
+            if altitude.is_within_bounds(20 * u.deg, 90 * u.deg) and not skip_print:
                 self.html += "<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}&#730;</td><td>{4}&#730;</td></tr>\n"\
                     .format(obj, odate, ohour, d, zstr)
                 print("{3} - a:{0} z:{1} o:{2} - {4} - {5} - {6}".format(d, zstr, altaz.obstime, obj, d, ohour, omin))
                 # make html report for this
+
 
     def write_out_html(self):
         with open('astronomy_report.html', 'w') as f:
@@ -193,6 +204,8 @@ def main():
             for m_num in range(1,scan_sky.messier_max):
                 m_id = "m" + str(m_num)
                 scan_sky.check_sky_tonight(m_id)
+                if m_num > 1:
+                    sys.exit()
 
     scan_sky.add_footer()
     scan_sky.write_out_html()
