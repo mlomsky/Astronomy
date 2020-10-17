@@ -113,6 +113,7 @@ class Targets:
 
 class Viewing:
     messier_max = 110
+    planet_list = ['mercury', 'venus', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune']
 
     def __init__(self, lat, long, date, name, height):
         self.lat = lat
@@ -138,7 +139,11 @@ class Viewing:
         return str(datetime.date(yr, m, d) + datetime.timedelta(1))
 
     def check_sky_tonight(self, obj):
-        sky_obj = SkyCoord.from_name(obj)
+        if obj in self.planet_list:
+            midnight = Time(self.date + ' 00:00:00')
+            sky_obj = get_body(obj, midnight)
+        else:
+            sky_obj = SkyCoord.from_name(obj)
         sky_objaltazs_viewing_date = sky_obj.transform_to(self.viewing_frame)
 
         last_hour = 999
@@ -222,6 +227,10 @@ def main():
                        viewing_location.data["viewing_date"], viewing_location.data["name"],
                        viewing_location.data["height"])
 
+    # Get data for Planets
+    for planet in scan_sky.planet_list:
+        scan_sky.check_sky_tonight(planet)
+    # Get data for Target group
     if 'target_group' in viewing_targets.data:
         if viewing_targets.data["target_group"] == "messier":
             for m_num in range(1,scan_sky.messier_max):
