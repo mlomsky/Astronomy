@@ -32,7 +32,7 @@ import datetime
 
 class Mail:  # need to add lots of error checking in the functions here
     data = {}
-    json_file_name = 'location.json'
+    json_file_name = 'mail.json'
     mail_exists = True
     sender_email_address = ''
     sender_email_password = ''
@@ -59,7 +59,7 @@ class Mail:  # need to add lots of error checking in the functions here
 
         with smtplib.SMTP_SSL("smtp.gmail.com", self.port, context=self.context) as server:
             server.login(self.sender_email_address, self.sender_email_password)
-        server.sendmail(self.sender_email_address, self.receiver_email_address, message.as_string())
+            server.sendmail(self.sender_email_address, self.receiver_email_address, message.as_string())
 
     def set_email_password(self):
         self.sender_email_address = self.data['sender_email']
@@ -227,11 +227,16 @@ def main():
             for m_num in range(1,scan_sky.messier_max):
                 m_id = "m" + str(m_num)
                 scan_sky.check_sky_tonight(m_id)
-                #if m_num > 1:
+                if m_num > 3:
+                    break
                  #   sys.exit()
 
     scan_sky.add_footer()
     scan_sky.write_out_html()
+    # Send email if the mail JSON file is present
+    email = Mail()
+    if email.mail_exists:
+        email.send_email(scan_sky.html, "see html version")
     # need to check API for caldwell list objects and other lists
     # for dso in viewing_targets.data["target_list"]:
         # scan_sky.check_sky_tonight(dso)
