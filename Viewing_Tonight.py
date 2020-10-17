@@ -135,7 +135,7 @@ class Viewing:
         yr = int(date[0:4])
         m = int(date[5:7])
         d = int(date[8:10])
-        return datetime.date(yr, m, d) + datetime.timedelta(1)
+        return str(datetime.date(yr, m, d) + datetime.timedelta(1))
 
     def check_sky_tonight(self, obj):
         sky_obj = SkyCoord.from_name(obj)
