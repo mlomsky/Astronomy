@@ -26,18 +26,29 @@ from astropy.coordinates import SkyCoord, EarthLocation, AltAz, solar_system, ge
 import smtplib
 import ssl
 from email.mime.text import MIMEText
+from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 import datetime
+from astropy.visualization import astropy_mpl_style, quantity_support
+import matplotlib.pyplot as plt
+from astropy.coordinates import get_sun
+from astropy.coordinates import get_moon
+import base64
 
 
 class Mail:  # need to add lots of error checking in the functions here
     data = {}
     json_file_name = 'mail.json'
     mail_exists = True
+    plot_exists = True
     sender_email_address = ''
     sender_email_password = ''
     receiver_email_address = ''
     port = 465
+    plot_file_name = 'sun_moon_plot.png'
+    marker = "Sun_Moon_Plot"
+    encodedcontent = ''
+    attachment_part = ''
 
     def __init__(self):
         self.verify_json_exists()
@@ -52,19 +63,38 @@ class Mail:  # need to add lots of error checking in the functions here
         message["Subject"] = "Astronomy Email"  # add infomation related to site and date
         message["From"] = self.sender_email_address
         message["To"] = self.receiver_email_address
+        message.preamble = 'This is a multi-part message in MIME format.'
+        msgAlternative = MIMEMultipart('alternative')
+        message.attach(msgAlternative)
         part1 = MIMEText(plain_msg, "plain")
         part2 = MIMEText(html_msg, "html")
         message.attach(part1)
         message.attach(part2)
+        # Attach Plot if exists
+        if self.plot_exists:
+            msgText = MIMEText('<b>Some <i>HTML</i> text</b> and an image.<br><img src="cid:{0}"><br>'
+                               .format(self.plot_file_name), 'html')
+            msgAlternative.attach(msgText)
+            fo = open(self.plot_file_name, "rb")
+            msgImage = MIMEImage(fo.read())
+            fo.close()
+            msgImage.add_header('Content-ID', '<{0}>'.format(self.plot_file_name))
+            message.attach(msgImage)
 
         with smtplib.SMTP_SSL("smtp.gmail.com", self.port, context=self.context) as server:
             server.login(self.sender_email_address, self.sender_email_password)
             server.sendmail(self.sender_email_address, self.receiver_email_address, message.as_string())
+            server.quit()
 
     def set_email_password(self):
         self.sender_email_address = self.data['sender_email']
         self.sender_email_password = self.data['sender_password']
         self.receiver_email_address = self.data['receiver_email']
+
+    def verify_plot_exists(self):
+        if not os.path.isfile(self.plot_file_name):
+            print("Can not load Location file, {0}".format(self.plot_file_name))
+            self.plot_exists = False
 
     def verify_json_exists(self):
         if not os.path.isfile(self.json_file_name):
@@ -126,9 +156,34 @@ class Viewing:
         self.viewing_date_midnight_time = self.date + ' 00:00:00'
         self.midnight = Time(self.viewing_date_midnight_time) - self.utcoffset
         self.delta_midnight = np.linspace(-6, 6, 500)*u.hour  # tune this to actual sunrise / sunset ... get that
+        self.sun_moon_delta_midnight = np.linspace(-12, 12, 1000)*u.hour
         self.viewing_times = self.midnight + self.delta_midnight
+        self.sun_moon_viewing_times = self.midnight + self.sun_moon_delta_midnight
         self.viewing_frame = AltAz(obstime=self.viewing_times, location=self.viewing_location)
-        self.html = html_header(self.site_name, self.date)
+        self.sun_moon_viewing_frame = AltAz(obstime=self.sun_moon_viewing_times, location=self.viewing_location)
+        self.html = ''
+
+    def plot_sun_moon(self):
+        plt.style.use(astropy_mpl_style)
+        quantity_support()
+
+        # Create Sun Moon Plot
+        sunaltazs_viewing_date = get_sun(self.midnight).transform_to(self.sun_moon_viewing_frame)
+        moonaltazs_viewing_date = get_moon(self.midnight).transform_to(self.sun_moon_viewing_frame)
+        plt.plot(self.sun_moon_delta_midnight, sunaltazs_viewing_date.alt, color='r', label='Sun')
+        plt.plot(self.sun_moon_delta_midnight, moonaltazs_viewing_date.alt, color=[0.75] * 3, ls='--', label='Moon')
+        plt.fill_between(self.sun_moon_delta_midnight, 0 * u.deg, 90 * u.deg,
+                         sunaltazs_viewing_date.alt < -0 * u.deg, color='0.5', zorder=0)
+        plt.fill_between(self.sun_moon_delta_midnight, 0 * u.deg, 90 * u.deg,
+                         sunaltazs_viewing_date.alt < -18 * u.deg, color='k', zorder=0)
+        plt.legend(loc='upper left')
+        plt.xlim(-12 * u.hour, 12 * u.hour)
+        plt.xticks((np.arange(13) * 2 - 12) * u.hour)
+        plt.ylim(0 * u.deg, 90 * u.deg)
+        plt.xlabel('Hours from EDT Midnight on {0}'.format(self.date))
+        plt.ylabel('Altitude [deg]')
+        plt.title('Sun and Moon plot for {0}'.format(self.site_name))
+        plt.savefig('sun_moon_plot.png')
 
     def fix_date(self, date):
         # This function pushes the date forward 1 day to account for the fact that my calculations should be from
@@ -179,7 +234,7 @@ class Viewing:
             print(self.html, file=f)
 
     def add_footer(self):
-        self.html += html_footer()
+        self.html = html_header(self.site_name, self.date) + self.html + html_footer()
 
 
 def un_utc(date, hour):
@@ -208,6 +263,7 @@ def html_header(location_name, viewing_date):
         border-collapse: collapse;\
       }\
     </style></head>\n<body>\n"  # add location specific information
+    html_head += "<img src = 'sun_moon_plot.png'>\n"
     html_head += "<h1>Viewing Items for {0} on {1}</h1>\n".format(location_name, viewing_date)
     html_head += "<table>\n"
     html_head += "<tr><td><b>Object</b></td><td><b>Date</b></td><td><b>Hour</b></td><td><b>Altitude</b></td>" \
@@ -226,7 +282,8 @@ def main():
     scan_sky = Viewing(viewing_location.data["lat"], viewing_location.data["long"],
                        viewing_location.data["viewing_date"], viewing_location.data["name"],
                        viewing_location.data["height"])
-
+    # Plot Sun and Moon
+    scan_sky.plot_sun_moon()
     # Get data for Planets
     for planet in scan_sky.planet_list:
         scan_sky.check_sky_tonight(planet)
@@ -239,7 +296,7 @@ def main():
                 if m_num > 3:
                     break
                  #   sys.exit()
-
+    # Print out Results
     scan_sky.add_footer()
     scan_sky.write_out_html()
     # Send email if the mail JSON file is present
