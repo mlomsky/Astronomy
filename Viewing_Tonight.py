@@ -221,10 +221,10 @@ class Viewing:
 
         # Create Sun Moon Plot
         sunaltazs_viewing_date = get_sun(self.midnight).transform_to(self.sun_moon_viewing_frame)
-        self.get_sunset(sunaltazs_viewing_date)
-        moonaltazs_viewing_date = get_moon(self.midnight).transform_to(self.sun_moon_viewing_frame)
+        moon_data = get_moon(self.sun_moon_viewing_times)
+        moonaltazs = moon_data.transform_to(self.sun_moon_viewing_frame)
+        plt.plot(self.sun_moon_delta_midnight, moonaltazs.alt, color=[0.75] * 3, ls='--', label='Moon')
         plt.plot(self.sun_moon_delta_midnight, sunaltazs_viewing_date.alt, color='r', label='Sun')
-        plt.plot(self.sun_moon_delta_midnight, moonaltazs_viewing_date.alt, color=[0.75] * 3, ls='--', label='Moon')
         plt.fill_between(self.sun_moon_delta_midnight, 0 * u.deg, 90 * u.deg,
                          sunaltazs_viewing_date.alt < -0 * u.deg, color='0.5', zorder=0)
         plt.fill_between(self.sun_moon_delta_midnight, 0 * u.deg, 90 * u.deg,
@@ -237,6 +237,7 @@ class Viewing:
         plt.ylabel('Altitude [deg]')
         plt.title('Sun and Moon plot for {0}'.format(self.site_name))
         plt.savefig(self.plot_file_name)
+        self.get_sunset(sunaltazs_viewing_date)
 
     def fix_date(self, date):
         # This function pushes the date forward 1 day to account for the fact that my calculations should be from
