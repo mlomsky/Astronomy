@@ -45,13 +45,13 @@ class Mail:  # need to add lots of error checking in the functions here
     sender_email_password = ''
     receiver_email_address = ''
     port = 465
-    plot_file_name = 'sun_moon_plot.png'
     marker = "Sun_Moon_Plot"
     encodedcontent = ''
     attachment_part = ''
 
-    def __init__(self):
+    def __init__(self, plot_file_name):
         self.verify_json_exists()
+        self.plot_file_name = plot_file_name
         if self.mail_exists:
             self.load_json()
             self.set_email_password()
@@ -59,7 +59,7 @@ class Mail:  # need to add lots of error checking in the functions here
 
     def send_email(self, html_msg, plain_msg):
         # create html message
-        message = MIMEMultipart("alternative")
+        message = MIMEMultipart("related")
         message["Subject"] = "Astronomy Email"  # add infomation related to site and date
         message["From"] = self.sender_email_address
         message["To"] = self.receiver_email_address
@@ -69,11 +69,10 @@ class Mail:  # need to add lots of error checking in the functions here
         part1 = MIMEText(plain_msg, "plain")
         part2 = MIMEText(html_msg, "html")
         message.attach(part1)
-        message.attach(part2)
+        msgAlternative.attach(part2)
         # Attach Plot if exists
         if self.plot_exists:
-            msgText = MIMEText('<b>Some <i>HTML</i> text</b> and an image.<br><img src="cid:{0}"><br>'
-                               .format(self.plot_file_name), 'html')
+            msgText = MIMEText(html_msg, 'html')
             msgAlternative.attach(msgText)
             fo = open(self.plot_file_name, "rb")
             msgImage = MIMEImage(fo.read())
@@ -162,6 +161,7 @@ class Viewing:
         self.viewing_frame = AltAz(obstime=self.viewing_times, location=self.viewing_location)
         self.sun_moon_viewing_frame = AltAz(obstime=self.sun_moon_viewing_times, location=self.viewing_location)
         self.html = ''
+        self.plot_file_name = 'sun_moon_plot.png'
 
     def plot_sun_moon(self):
         plt.style.use(astropy_mpl_style)
@@ -183,7 +183,7 @@ class Viewing:
         plt.xlabel('Hours from EDT Midnight on {0}'.format(self.date))
         plt.ylabel('Altitude [deg]')
         plt.title('Sun and Moon plot for {0}'.format(self.site_name))
-        plt.savefig('sun_moon_plot.png')
+        plt.savefig(self.plot_file_name)
 
     def fix_date(self, date):
         # This function pushes the date forward 1 day to account for the fact that my calculations should be from
@@ -234,7 +234,7 @@ class Viewing:
             print(self.html, file=f)
 
     def add_footer(self):
-        self.html = html_header(self.site_name, self.date) + self.html + html_footer()
+        self.html = html_header(self.site_name, self.date, self.plot_file_name) + self.html + html_footer()
 
 
 def un_utc(date, hour):
@@ -255,7 +255,7 @@ def html_footer():
     return html_foot
 
 
-def html_header(location_name, viewing_date):
+def html_header(location_name, viewing_date, plot_file_name):
     html_head = "<html><head><title>Astronomy Email</title><style> table, th,\
       td {\
         padding: 10px;\
@@ -263,7 +263,7 @@ def html_header(location_name, viewing_date):
         border-collapse: collapse;\
       }\
     </style></head>\n<body>\n"  # add location specific information
-    html_head += "<img src = 'sun_moon_plot.png'>\n"
+    html_head += '<H1>Sun and Moon Plot </h1><br><img src="cid:{0}"><br>\n'.format(plot_file_name)
     html_head += "<h1>Viewing Items for {0} on {1}</h1>\n".format(location_name, viewing_date)
     html_head += "<table>\n"
     html_head += "<tr><td><b>Object</b></td><td><b>Date</b></td><td><b>Hour</b></td><td><b>Altitude</b></td>" \
@@ -300,7 +300,7 @@ def main():
     scan_sky.add_footer()
     scan_sky.write_out_html()
     # Send email if the mail JSON file is present
-    email = Mail()
+    email = Mail(scan_sky.plot_file_name)
     if email.mail_exists:
         email.send_email(scan_sky.html, "see html version")
     # need to check API for caldwell list objects and other lists
