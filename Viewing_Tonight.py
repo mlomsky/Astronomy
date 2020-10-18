@@ -33,7 +33,6 @@ from astropy.visualization import astropy_mpl_style, quantity_support
 import matplotlib.pyplot as plt
 from astropy.coordinates import get_sun
 from astropy.coordinates import get_moon
-import base64
 
 
 class Mail:  # need to add lots of error checking in the functions here
@@ -143,6 +142,7 @@ class Targets:
 class Viewing:
     messier_max = 110
     planet_list = ['mercury', 'venus', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune']
+    viewing_arr = []
 
     def __init__(self, lat, long, date, name, height):
         self.lat = lat
@@ -162,6 +162,58 @@ class Viewing:
         self.sun_moon_viewing_frame = AltAz(obstime=self.sun_moon_viewing_times, location=self.viewing_location)
         self.html = ''
         self.plot_file_name = 'sun_moon_plot.png'
+        self.viewing_index = {}  # mon*10000+day*100+hour, dictionary index
+        self.viewing_dictionary = {}  # key dictionary index, value html table line
+        self.v_i_ctr = 0
+        self.dusk = ''
+        self.sunset = ''
+        self.sunrise = ''
+        self.dawn = ''
+        self.half_dark_hours = 0
+
+    def sort_data(self):
+        viewing_copy = self.viewing_index
+        self.viewing_arr = sorted((value, key) for (key, value) in viewing_copy.items())
+
+    def set_html(self):
+        for row in self.viewing_arr:
+            self.html += self.viewing_dictionary[row[1]]
+        self.html = html_header(self.site_name, self.date, self.plot_file_name) + self.html + html_footer()
+
+    def adjust_delta_midnight(self):
+        self.get_hours_sunset()
+        if self.half_dark_hours != 0:
+            self.delta_midnight = np.linspace(-self.half_dark_hours, self.half_dark_hours, 500) * u.hour
+
+    def get_hours_sunset(self):
+        midnight = datetime.datetime.strptime(self.viewing_date_midnight_time, '%Y-%m-%d %H:%M:%S')
+        dusktime = datetime.datetime.strptime(self.date + ' ' + self.dusk +  ':00', '%Y-%m-%d %H:%M:%S')
+        diff = midnight - dusktime
+        self.half_dark_hours = round(diff.seconds/3600)
+
+    def get_sunset(self, sunaltaz):
+        # note hour is utc, not local
+        last_alt = 0
+        first = True
+        for altaz in sunaltaz:
+            if first:
+                last_alt = altaz.alt
+                first = False
+            if altaz.alt.is_within_bounds(0 * u.deg, 1 * u.deg):
+                ohour = int(str(altaz.obstime)[11:13]) - 4
+                omin = str(altaz.obstime)[14:16]
+                if last_alt > altaz.alt:
+                    self.dusk = str(ohour) + ':' + omin
+                else:
+                    self.sunrise = str(ohour) + ':' + omin
+            if altaz.alt.is_within_bounds(-20 * u.deg, -18 * u.deg):
+                ohour = int(str(altaz.obstime)[11:13]) - 4
+                omin = str(altaz.obstime)[14:16]
+                if last_alt > altaz.alt:
+                    self.sunset = str(ohour) + ':' + omin
+                else:
+                    self.dawn = str(ohour) + ':' + omin
+            last_alt = altaz.alt
 
     def plot_sun_moon(self):
         plt.style.use(astropy_mpl_style)
@@ -169,6 +221,7 @@ class Viewing:
 
         # Create Sun Moon Plot
         sunaltazs_viewing_date = get_sun(self.midnight).transform_to(self.sun_moon_viewing_frame)
+        self.get_sunset(sunaltazs_viewing_date)
         moonaltazs_viewing_date = get_moon(self.midnight).transform_to(self.sun_moon_viewing_frame)
         plt.plot(self.sun_moon_delta_midnight, sunaltazs_viewing_date.alt, color='r', label='Sun')
         plt.plot(self.sun_moon_delta_midnight, moonaltazs_viewing_date.alt, color=[0.75] * 3, ls='--', label='Moon')
@@ -202,15 +255,16 @@ class Viewing:
         sky_objaltazs_viewing_date = sky_obj.transform_to(self.viewing_frame)
 
         last_hour = 999
-        print(" obj,alt, az, altaz.obstime, ohour, omin")
         for altaz in sky_objaltazs_viewing_date: # need to parallelize this at some point
             altitude = altaz.alt
-            (sign, d, m, s)  = altitude.signed_dms
+            (sign, d, m, s) = altitude.signed_dms
             (zsign, zd, zm, zs) = altaz.az.signed_dms
             zstr = zsign + zd
             ohour = str(altaz.obstime)[11:13]
             omin = str(altaz.obstime)[14:16]
             odate = str(altaz.obstime)[0:10]
+            oday = str(altaz.obstime)[8:10]
+            omon = str(altaz.obstime)[5:7]
             # need to modify code here to limit to dark hours on day
             # possible enhancement to make code use times of sun to know when dark
             skip_print = True
@@ -224,10 +278,13 @@ class Viewing:
             last_hour = ohour
             if altitude.is_within_bounds(20 * u.deg, 90 * u.deg) and not skip_print:
                 obs_date, obs_hour = un_utc(odate, ohour)
-                self.html += "<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}&#730;</td><td>{4}&#730;</td></tr>\n"\
+                table_row = "<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}&#730;</td><td>{4}&#730;</td></tr>\n" \
                     .format(obj, obs_date, obs_hour, d, zstr)
-                print("{3} - a:{0} z:{1} o:{2} - {4} - {5} ".format(d, zstr, obs_date, obj, obs_hour, omin))
-                # make html report for this
+                # mon*10000+day*100+hour
+                key = int(omon)*10000 + int(oday)*100 + int(ohour)
+                self.viewing_index[self.v_i_ctr] = key
+                self.viewing_dictionary[self.v_i_ctr] = table_row
+                self.v_i_ctr += 1
 
     def write_out_html(self):
         with open('astronomy_report.html', 'w') as f:
@@ -283,26 +340,35 @@ def main():
                        viewing_location.data["viewing_date"], viewing_location.data["name"],
                        viewing_location.data["height"])
     # Plot Sun and Moon
+    print("Plotting Sun and Moon")
     scan_sky.plot_sun_moon()
+    scan_sky.adjust_delta_midnight()
     # Get data for Planets
     for planet in scan_sky.planet_list:
+        print("Working on: {0}".format(planet))
         scan_sky.check_sky_tonight(planet)
     # Get data for Target group
     if 'target_group' in viewing_targets.data:
         if viewing_targets.data["target_group"] == "messier":
             for m_num in range(1,scan_sky.messier_max):
                 m_id = "m" + str(m_num)
+                print("Working on: {0}".format(m_id))
                 scan_sky.check_sky_tonight(m_id)
                 if m_num > 3:
-                    break
+                    # break
+                    pass
                  #   sys.exit()
+    # Sort The found data
+    scan_sky.sort_data()
+    scan_sky.set_html()
     # Print out Results
-    scan_sky.add_footer()
+    print("Printing Out Results")
     scan_sky.write_out_html()
     # Send email if the mail JSON file is present
+    print("Sending Email")
     email = Mail(scan_sky.plot_file_name)
-    if email.mail_exists:
-        email.send_email(scan_sky.html, "see html version")
+    # if email.mail_exists:
+        # email.send_email(scan_sky.html, "see html version")
     # need to check API for caldwell list objects and other lists
     # for dso in viewing_targets.data["target_list"]:
         # scan_sky.check_sky_tonight(dso)
