@@ -1,4 +1,5 @@
 # Astronomy
+:EMOJICODE:
 * Basic Link for source code
     * https://docs.astropy.org/en/stable/generated/examples/coordinates/plot_obs-planning.html
  
@@ -8,7 +9,7 @@ location and an object (or list) and then have it give me a plot or some AltAz
 numbers for when and where the object would be available
 #### Basic program
 * command line location and object
-* :heavy_check_mark: return AltAZ table at a few key times in HTML document 
+* :heavy_check_mark: return AltAZ table at a few key times in HTML document :heavy_check_mark:
     * key times meaning +10deg above horizon, 30deg, 45deg
     * altitude at key times??
 * email document option
