@@ -33,6 +33,7 @@ from astropy.visualization import astropy_mpl_style, quantity_support
 import matplotlib.pyplot as plt
 from astropy.coordinates import get_sun
 from astropy.coordinates import get_moon
+from Messier import Messier
 
 
 class Mail:  # need to add lots of error checking in the functions here
@@ -266,8 +267,12 @@ class Viewing:
             odate = str(altaz.obstime)[0:10]
             oday = str(altaz.obstime)[8:10]
             omon = str(altaz.obstime)[5:7]
-            # need to modify code here to limit to dark hours on day
-            # possible enhancement to make code use times of sun to know when dark
+
+            object_type = 'Planet'
+            if obj not in self.planet_list:
+                my_messier = Messier.MessierData()
+                object_type = my_messier.object_type[obj]
+
             skip_print = True
             if 0 <= int(omin) < 5:
                 if ohour == last_hour:
@@ -279,8 +284,9 @@ class Viewing:
             last_hour = ohour
             if altitude.is_within_bounds(20 * u.deg, 90 * u.deg) and not skip_print:
                 obs_date, obs_hour = un_utc(odate, ohour)
-                table_row = "<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}&#730;</td><td>{4}&#730;</td></tr>\n" \
-                    .format(obj, obs_date, obs_hour, d, zstr)
+                table_row = "<tr><td>{0}</td><td>{5}</td><td>{1}</td><td>{2}</td><td>{3}&#730;</td>" \
+                            "<td>{4}&#730;</td></tr>\n" \
+                    .format(obj, obs_date, obs_hour, d, zstr, object_type)
                 # mon*10000+day*100+hour
                 key = int(omon)*10000 + int(oday)*100 + int(ohour)
                 self.viewing_index[self.v_i_ctr] = key
@@ -324,8 +330,8 @@ def html_header(location_name, viewing_date, plot_file_name):
     html_head += '<H1>Sun and Moon Plot </h1><br><img src="cid:{0}"><br>\n'.format(plot_file_name)
     html_head += "<h1>Viewing Items for {0} on {1}</h1>\n".format(location_name, viewing_date)
     html_head += "<table>\n"
-    html_head += "<tr><td><b>Object</b></td><td><b>Date</b></td><td><b>Hour</b></td><td><b>Altitude</b></td>" \
-                 "<td><b>Azimuth</b></td></tr>\n"
+    html_head += "<tr><td><b>Object</b></td><td><b>Type</b></td><td><b>Date</b></td><td><b>Hour</b></td>" \
+                 "<td><b>Altitude</b></td><td><b>Azimuth</b></td></tr>\n"
     return html_head
 
 
@@ -356,8 +362,8 @@ def main():
                 print("Working on: {0}".format(m_id))
                 scan_sky.check_sky_tonight(m_id)
                 if m_num > 3:
-                    # break
-                    pass
+                    break
+                    # pass
                  #   sys.exit()
     # Sort The found data
     scan_sky.sort_data()
