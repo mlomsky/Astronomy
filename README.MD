@@ -16,7 +16,7 @@ numbers for when and where the object would be available
 #### Upgrade 1
 * :heavy_check_mark:get date and use that to show times of sun
     * :heavy_check_mark: sunset etc
-* also return basic stats on object
+* :heavy_check_mark:also return basic stats on object
 #### Upgrade 2
 * :heavy_check_mark: add graphic plots
 #### Upgrade 3
@@ -25,9 +25,12 @@ numbers for when and where the object would be available
 * add basic stats and and links
     * wikipedia data, image search
 #### Upgrade 4
+* this enhancement will be delayed a while as I work on other parts.  I am prioritizing aesthetic enhancements first. 
 * make it work as an executable with pyinstaller
 * https://ourcodeworld.com/articles/read/273/how-to-create-an-executable-exe-from-a-python-script-in-windows-using-pyinstaller
-
+#### Upgrade 5
+* it occurs to me that I should also make the background black and the text white as the intention is for this to be viewied at night or in some darkeness where as if I print it out, I would reverse that.  hmm, perhaps I need a printing out option.
+* this will need to be described further
 ## Brainstorming
 * accuweather has lots of info
     * https://developer.accuweather.com/apis
