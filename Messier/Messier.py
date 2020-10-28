@@ -116,5 +116,23 @@ class MessierData:
                             'm109': 'Barred Spiral galaxy',
                             'm110': 'Dwarf elliptical galaxy'}
 
+        self.messier_filters = {'m1': 'UHC/DEEP-SKY (H-beta *not* recommended).',
+                                'm8': 'UHC/OIII',
+                                'm16': 'UHC/OIII, but H-BETA hurts the view',
+                                'm17': 'OIII/UHC (H-BETA not recommended)',
+                                'm20': 'UHC/H-BETA',
+                                'm27': 'UHC (OIII also useful in showing some inner detail, but H-BETA is NOT '
+                                       'recommended)',
+                                'm42': 'UHC/OIII (near-tie)*',
+                                'm43': 'H-BETA (UHC and Deep-Sky also help)',
+                                'm57': 'UHC/OIII. Nebula is bright and small enough not to really benefit enormously '
+                                       'from filter use, but UHC does improve it to a degree (H-BETA is NOT '
+                                       'recommended!)',
+                                'm76': 'UHC/OIII (H-BETA NOT recommended!)',
+                                'm97': 'OIII/UHC (H-beta *not* recommended)'}
+
     def return_object(self):
         return self.object_type
+
+    def return_filters(self):
+        return self.messier_filters

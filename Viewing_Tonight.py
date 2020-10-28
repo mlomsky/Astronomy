@@ -152,11 +152,12 @@ class Viewing:
         self.site_name = name
         self.height = height
         self.viewing_location = EarthLocation(lat=self.lat * u.deg, lon=self.long * u.deg, height=self.height * u.m)
-        self.utcoffset = -4 * u.hour  # Eastern Daylight Time
+        self.utcoffset_int = -4  # need to make this loadable from the viewing location
+        self.utcoffset = self.utcoffset_int * u.hour  # Eastern Daylight Time
         self.viewing_date_midnight_time = self.date + ' 00:00:00'
         self.midnight = Time(self.viewing_date_midnight_time) - self.utcoffset
-        self.delta_midnight = np.linspace(-6, 6, 500)*u.hour  # this is the default value that is tuned later
-        self.sun_moon_delta_midnight = np.linspace(-12, 12, 1000)*u.hour
+        self.delta_midnight = np.linspace(-6, 6, 500) * u.hour  # this is the default value that is tuned later
+        self.sun_moon_delta_midnight = np.linspace(-12, 12, 1000) * u.hour
         self.viewing_times = self.midnight + self.delta_midnight
         self.sun_moon_viewing_times = self.midnight + self.sun_moon_delta_midnight
         self.viewing_frame = AltAz(obstime=self.viewing_times, location=self.viewing_location)
@@ -179,14 +180,19 @@ class Viewing:
     def set_html(self):
         last_hour = -1
         for row in self.viewing_arr:
-            hour = row[0] % 100
+            if 0 < (row[0] % 100) + self.utcoffset_int < 25:
+                hour = (row[0] % 100) + self.utcoffset_int
+            elif ((row[0] % 100) + self.utcoffset_int) < 0:
+                hour = (row[0] % 100) + self.utcoffset_int + 24
+            else:
+                hour = (row[0] % 100) + self.utcoffset_int
             if hour != last_hour:
                 last_hour = hour
-                self.html += "<tr><td colspan=5><a id=\"{0}\">Viewing hour starting at {0}</a> </td><td><a href=\"#top\">Top</td></tr>".format(hour)
-            print(row[0])
+                self.html += "<tr><td colspan=5><a id=\"{0}\">Viewing hour starting at {0}</a> </td><td><a " \
+                             "href=\"#top\">Top</td></tr>".format(hour)
             self.html += self.viewing_dictionary[row[1]]
         self.html = html_header(self.site_name, self.date, self.plot_file_name, self.half_dark_hours) + self.html \
-                    + html_footer()
+                  + html_footer()
 
     def adjust_delta_midnight(self):
         self.get_hours_sunset()
@@ -197,7 +203,7 @@ class Viewing:
         midnight = datetime.datetime.strptime(self.viewing_date_midnight_time, '%Y-%m-%d %H:%M:%S')
         dusktime = datetime.datetime.strptime(self.date + ' ' + self.dusk + ':00', '%Y-%m-%d %H:%M:%S')
         diff = midnight - dusktime
-        self.half_dark_hours = round(diff.seconds/3600)
+        self.half_dark_hours = round(diff.seconds / 3600)
 
     def get_sunset(self, sunaltaz):
         # note hour is utc, not local
@@ -264,7 +270,7 @@ class Viewing:
         sky_objaltazs_viewing_date = sky_obj.transform_to(self.viewing_frame)
 
         last_hour = 999
-        for altaz in sky_objaltazs_viewing_date: # need to parallelize this at some point
+        for altaz in sky_objaltazs_viewing_date:  # need to parallelize this at some point
             altitude = altaz.alt
             (sign, d, m, s) = altitude.signed_dms
             (zsign, zd, zm, zs) = altaz.az.signed_dms
@@ -276,9 +282,15 @@ class Viewing:
             omon = str(altaz.obstime)[5:7]
 
             object_type = 'Planet'
+            suggested_filters = ''
+            finder_link = ''
             if obj not in self.planet_list:
                 my_messier = Messier.MessierData()
                 object_type = my_messier.object_type[obj]
+                finder_link = "<a href=\"https://freestarcharts.com/images/Articles/Messier" \
+                              "/Single/{0}_Finder_Chart.pdf\" target=\"_blank\">Finder Chart</a>".format(obj.upper())
+                if obj in my_messier.messier_filters.keys():
+                    suggested_filters = my_messier.messier_filters[obj]
 
             skip_print = True
             if 0 <= int(omin) < 5:
@@ -296,9 +308,10 @@ class Viewing:
                 else:
                     tr_bgclr = "#d6eaf8"
                 table_row = "<tr bgcolor={6}><td>{0}</td><td>{5}</td><td>{1}</td><td>{2}</td><td>{3}&#730;</td>" \
-                            "<td>{4}&#730;</td></tr>\n" \
-                    .format(obj, obs_date, obs_hour, d, zstr, object_type, tr_bgclr)
-                key = int(omon)*10000 + int(oday)*100 + int(ohour)
+                            "<td>{4}&#730;</td><td>{8}</td><td>{7}</td></tr>\n" \
+                    .format(obj.upper(), obs_date, obs_hour, d, zstr, object_type, tr_bgclr, suggested_filters,
+                            finder_link)
+                key = int(omon) * 10000 + int(oday) * 100 + int(ohour)
                 self.viewing_index[self.v_i_ctr] = key
                 self.viewing_dictionary[self.v_i_ctr] = table_row
                 self.v_i_ctr += 1
@@ -308,8 +321,8 @@ class Viewing:
             print(self.html, file=f)
 
     def add_footer(self):
-        self.html = html_header(self.site_name, self.date, self.plot_file_name, self.half_dark_hours) \
-                    + self.html + html_footer()
+        self.html = html_header(self.site_name, self.date, self.plot_file_name, self.half_dark_hours,
+                                self.utcoffset_int) + self.html + html_footer()
 
 
 def un_utc(date, hour):
@@ -348,7 +361,8 @@ def html_header(location_name, viewing_date, plot_file_name, half_dark_hours):
     html_head += "<a href = \"#{0}\"> {0} </a> ".format(half_dark_hours)
     html_head += "<table>\n"
     html_head += "<tr><td><b>Object</b></td><td><b>Type</b></td><td><b>Date</b></td><td><b>Hour</b></td>" \
-                 "<td><b>Altitude</b></td><td><b>Azimuth</b></td></tr>\n"
+                 "<td><b>Altitude</b></td><td><b>Azimuth</b></td><td><b>Finder Chart</b></td><td><b>Suggested Filter" \
+                 "</b></td></tr>\n"
     return html_head
 
 
@@ -379,9 +393,9 @@ def main():
                 print("Working on: {0}".format(m_id))
                 scan_sky.check_sky_tonight(m_id)
                 if m_num > 3:
-                    break
-                    # pass
-                 #   sys.exit()
+                    # break
+                    pass
+                #   sys.exit()
     # Sort The found data
     scan_sky.sort_data()
     scan_sky.set_html()
@@ -392,10 +406,10 @@ def main():
     print("Sending Email")
     email = Mail(scan_sky.plot_file_name)
     # if email.mail_exists:
-        # email.send_email(scan_sky.html, "see html version")
+    # email.send_email(scan_sky.html, "see html version")
     # need to check API for caldwell list objects and other lists
     # for dso in viewing_targets.data["target_list"]:
-        # scan_sky.check_sky_tonight(dso)
+    # scan_sky.check_sky_tonight(dso)
 
 
 if __name__ == '__main__':
