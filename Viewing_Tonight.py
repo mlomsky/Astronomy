@@ -149,6 +149,7 @@ class Viewing:
         self.lat = lat
         self.long = long
         self.date = self.fix_date(date)
+        self.viewing_date_evening = str(datetime.date(int(date[0:4]), int(date[5:7]), int(date[8:10])))
         self.site_name = name
         self.height = height
         self.viewing_location = EarthLocation(lat=self.lat * u.deg, lon=self.long * u.deg, height=self.height * u.m)
@@ -191,7 +192,7 @@ class Viewing:
                 self.html += "<tr><td colspan=5><a id=\"{0}\">Viewing hour starting at {0}</a> </td><td><a " \
                              "href=\"#top\">Top</td></tr>".format(hour)
             self.html += self.viewing_dictionary[row[1]]
-        self.html = html_header(self.site_name, self.date, self.plot_file_name, self.half_dark_hours) + self.html \
+        self.html = html_header(self.site_name, self.viewing_date_evening , self.plot_file_name, self.half_dark_hours) + self.html \
                   + html_footer()
 
     def adjust_delta_midnight(self):
@@ -321,7 +322,7 @@ class Viewing:
             print(self.html, file=f)
 
     def add_footer(self):
-        self.html = html_header(self.site_name, self.date, self.plot_file_name, self.half_dark_hours,
+        self.html = html_header(self.site_name, self.viewing_date_evening , self.plot_file_name, self.half_dark_hours,
                                 self.utcoffset_int) + self.html + html_footer()
 
 
@@ -339,7 +340,9 @@ def un_utc(date, hour):
 
 
 def html_footer():
-    html_foot = "</table>\n</body>"
+    html_foot = "</table>\n" \
+                "<h5> Finder Charts provided by https://freestarcharts.com/ </h5>\n" \
+                "</body>"
     return html_foot
 
 
@@ -351,8 +354,9 @@ def html_header(location_name, viewing_date, plot_file_name, half_dark_hours):
         border-collapse: collapse;\
       }\
     </style></head>\n<body>\n"  # add location specific information
-    html_head += '<H1>Sun and Moon Plot </h1><br><img src="cid:{0}"><br>\n'.format(plot_file_name)
-    html_head += "<h1>Viewing Items for {0} on {1}</h1>\n".format(location_name, viewing_date)
+    html_head += "<h1>Viewing Information for {0} on {1} Starting at Sundown</h1>\n".format(location_name, viewing_date)
+    html_head += '<H2>Sun and Moon Plot </h2><br><img src="cid:{0}"><br>\n'.format(plot_file_name)
+    html_head += "<h2>Viewing Items for {0} on {1}</h2>\n".format(location_name, viewing_date)
     html_head += "<b>Jump to Hour: </b><a id=\"#Top\"></a>"
     for hour in range((24 - half_dark_hours), 24, 1):
         html_head += "<a href = \"#{0}\"> {0} </a> - ".format(hour)
@@ -361,7 +365,7 @@ def html_header(location_name, viewing_date, plot_file_name, half_dark_hours):
     html_head += "<a href = \"#{0}\"> {0} </a> ".format(half_dark_hours)
     html_head += "<table>\n"
     html_head += "<tr><td><b>Object</b></td><td><b>Type</b></td><td><b>Date</b></td><td><b>Hour</b></td>" \
-                 "<td><b>Altitude</b></td><td><b>Azimuth</b></td><td><b>Finder Chart</b></td><td><b>Suggested Filter" \
+                 "<td><b>Altitude</b></td><td><b>Azimuth</b></td><td><b>Finder Chart</b><br></td><td><b>Suggested Filter" \
                  "</b></td></tr>\n"
     return html_head
 
@@ -393,8 +397,8 @@ def main():
                 print("Working on: {0}".format(m_id))
                 scan_sky.check_sky_tonight(m_id)
                 if m_num > 3:
-                    # break
-                    pass
+                    break
+                    #pass
                 #   sys.exit()
     # Sort The found data
     scan_sky.sort_data()
