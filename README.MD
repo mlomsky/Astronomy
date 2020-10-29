@@ -41,15 +41,3 @@ numbers for when and where the object would be available
     
 
 
-# Python readme suggestions
-* https://www.makeareadme.com/
-* https://guides.github.com/features/mastering-markdown/
-* https://github.com/ikatyang/emoji-cheat-sheet/blob/master/README.md
-## Project should include
-* What your project does
-* How to install it
-* Example usage
-* How to set up the dev environment
-* How to ship a change
-* Change log
-* License and author info
