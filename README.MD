@@ -31,6 +31,12 @@ numbers for when and where the object would be available
 #### Upgrade 5
 * it occurs to me that I should also make the background black and the text white as the intention is for this to be viewied at night or in some darkeness where as if I print it out, I would reverse that.  hmm, perhaps I need a printing out option.
 * this will need to be described further
+#### Upgrade 6 - Ideas from tonights (10-29) club board meeting
+* add link from object name to nasa page for each messier object
+* add alt az link to wikipedia and a chart explaining AZ map to compass points
+* add column headers to each hour block
+#### Upgrade 7
+* find calc api or something to link lunar illumination / phase
 ## Brainstorming
 * accuweather has lots of info
     * https://developer.accuweather.com/apis
