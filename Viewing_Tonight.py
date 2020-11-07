@@ -357,6 +357,8 @@ def html_header(location_name, viewing_date, plot_file_name, half_dark_hours):
     html_head += "<h1>Viewing Information for {0} on {1} Starting at Sundown</h1>\n".format(location_name, viewing_date)
     html_head += '<H2>Sun and Moon Plot </h2><br><img src="cid:{0}"><br>\n'.format(plot_file_name)
     html_head += "<h2>Viewing Items for {0} on {1}</h2>\n".format(location_name, viewing_date)
+    html_head += "<h3>Azimuth chart</h3>\n"
+    html_head += "North - 0&deg; East 	90&deg; South 	180&deg; West 	270&deg;<br>"
     html_head += "<b>Jump to Hour: </b><a id=\"#Top\"></a>"
     for hour in range((24 - half_dark_hours), 24, 1):
         html_head += "<a href = \"#{0}\"> {0} </a> - ".format(hour)
