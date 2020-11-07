@@ -131,6 +131,13 @@ class MessierData:
                                 'm76': 'UHC/OIII (H-BETA NOT recommended!)',
                                 'm97': 'OIII/UHC (H-beta *not* recommended)'}
 
+        self.messier_images = {'m1': 'https://www.nasa.gov/sites/default/files/styles/full_width/public/thumbnails'
+                                     '/image/crab-nebula-mosaic.jpg?itok=DNaRmPtc',
+                               'm2': 'https://www.nasa.gov/sites/default/files/styles/full_width/public/thumbnails'
+                                     '/image/m2.jpg?itok=wm6A_ELC'
+        }
+
+
     def return_object(self):
         return self.object_type
 

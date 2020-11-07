@@ -189,11 +189,12 @@ class Viewing:
                 hour = (row[0] % 100) + self.utcoffset_int
             if hour != last_hour:
                 last_hour = hour
-                self.html += "<tr><td colspan=5><a id=\"{0}\">Viewing hour starting at {0}</a> </td><td><a " \
-                             "href=\"#top\">Top</td></tr>".format(hour)
+                self.html += "<tr><td><a href=\"#top\">Top</td><td colspan=7><a id=\"{0}\">Viewing hour starting at" \
+                             " {0}</a> </td></tr>".format(hour)
+                self.html += header_row()
             self.html += self.viewing_dictionary[row[1]]
-        self.html = html_header(self.site_name, self.viewing_date_evening , self.plot_file_name, self.half_dark_hours) + self.html \
-                  + html_footer()
+        self.html = html_header(self.site_name, self.viewing_date_evening , self.plot_file_name, self.half_dark_hours) \
+                    + self.html + html_footer()
 
     def adjust_delta_midnight(self):
         self.get_hours_sunset()
@@ -308,9 +309,11 @@ class Viewing:
                     tr_bgclr = "#d5f5e3"
                 else:
                     tr_bgclr = "#d6eaf8"
+                compass = return_sector(zstr)
+                direction = str(zstr) + " - {0}".format(compass)
                 table_row = "<tr bgcolor={6}><td>{0}</td><td>{5}</td><td>{1}</td><td>{2}</td><td>{3}&#730;</td>" \
                             "<td>{4}&#730;</td><td>{8}</td><td>{7}</td></tr>\n" \
-                    .format(obj.upper(), obs_date, obs_hour, d, zstr, object_type, tr_bgclr, suggested_filters,
+                    .format(obj.upper(), obs_date, obs_hour, d, direction, object_type, tr_bgclr, suggested_filters,
                             finder_link)
                 key = int(omon) * 10000 + int(oday) * 100 + int(ohour)
                 self.viewing_index[self.v_i_ctr] = key
@@ -346,6 +349,17 @@ def html_footer():
     return html_foot
 
 
+def return_sector(degree):
+    if 0 <= degree < 90:
+        return "N"
+    elif 90 <= degree < 180:
+        return "E"
+    elif 180 <= degree < 270:
+        return "S"
+    elif 270 <= degree < 3590:
+        return "W"
+
+
 def html_header(location_name, viewing_date, plot_file_name, half_dark_hours):
     html_head = "<html><head><title>Astronomy Email</title><style> table, th,\
       td {\
@@ -357,8 +371,13 @@ def html_header(location_name, viewing_date, plot_file_name, half_dark_hours):
     html_head += "<h1>Viewing Information for {0} on {1} Starting at Sundown</h1>\n".format(location_name, viewing_date)
     html_head += '<H2>Sun and Moon Plot </h2><br><img src="cid:{0}"><br>\n'.format(plot_file_name)
     html_head += "<h2>Viewing Items for {0} on {1}</h2>\n".format(location_name, viewing_date)
-    html_head += "<h3>Azimuth chart</h3>\n"
-    html_head += "North - 0&deg; East 	90&deg; South 	180&deg; West 	270&deg;<br>"
+    html_head += "<h3>Azimuth Chart</h3>\n"
+    html_head += "<table>\n" \
+                 "<tr><td>Direction</td><td>From</td><td>To</td></tr>\n" \
+                 "<tr><td> North</td>  <td>0&deg;  </td><td>89&deg;  </td></tr>\n"
+    html_head += "<tr><td> East </td>  <td>90&deg; </td><td>179&deg;  </td></tr>\n"
+    html_head += "<tr><td> South</td>  <td>180&deg;</td><td>269&deg;  </td></tr>\n"
+    html_head += "<tr><td> West </td>  <td>270&deg;</td><td>359&deg;  </td></tr> </table> <br>\n"
     html_head += "<b>Jump to Hour: </b><a id=\"#Top\"></a>"
     for hour in range((24 - half_dark_hours), 24, 1):
         html_head += "<a href = \"#{0}\"> {0} </a> - ".format(hour)
@@ -366,10 +385,14 @@ def html_header(location_name, viewing_date, plot_file_name, half_dark_hours):
         html_head += "<a href = \"#{0}\"> {0} </a> - ".format(hour)
     html_head += "<a href = \"#{0}\"> {0} </a> ".format(half_dark_hours)
     html_head += "<table>\n"
-    html_head += "<tr><td><b>Object</b></td><td><b>Type</b></td><td><b>Date</b></td><td><b>Hour</b></td>" \
-                 "<td><b>Altitude</b></td><td><b>Azimuth</b></td><td><b>Finder Chart</b><br></td><td><b>Suggested Filter" \
-                 "</b></td></tr>\n"
+    html_head += header_row()
     return html_head
+
+
+def header_row():
+    return "<tr><td><b>Object</b></td><td><b>Type</b></td><td><b>Date</b></td><td><b>Hour</b></td>" \
+           "<td><b>Altitude</b></td><td><b>Azimuth</b></td><td><b>Finder Chart</b><br></td><td><b>Suggested Filter" \
+           "</b></td></tr>\n"
 
 
 def main():
