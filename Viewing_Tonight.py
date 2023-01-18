@@ -168,15 +168,14 @@ class Viewing:
         self.plot_file_name = 'sun_moon_plot.png'
         self.viewing_index = {}  # mon*10000+day*100+hour, dictionary index
         self.viewing_dictionary = {}  # key dictionary index, value html table line
-        self.viewing_summary_dictionary = {} # key dictionary index, value html table line
+        self.viewing_summary_dictionary = {}  # key dictionary index, value html table line
         self.v_i_ctr = 0
         self.dusk = ''
         self.sunset = ''
         self.sunrise = ''
         self.dawn = ''
         self.half_dark_hours = 0
-        self.viewing_summary_dictionary = defaultdict(dict) # calculate general info for summary view
-
+        self.viewing_summary_dictionary = defaultdict(dict)  # calculate general info for summary view
 
     def sort_data(self):
         viewing_copy = self.viewing_index
@@ -347,9 +346,18 @@ class Viewing:
 
     def make_summary_html(self):
         for obj in self.viewing_summary_dictionary:
-            print("\nsummary " + obj)
-            for key, value in self.viewing_summary_dictionary[obj].items():
-                print("\t" + key + ' ' + str(value) + ', ')
+            if self.viewing_summary_dictionary[obj]["rise"] == 999:
+                continue
+            self.html_summary += '<tr><td>' + obj.capitalize() + '</td><td>' + self.viewing_summary_dictionary[obj]['type'].capitalize() + \
+                                 '</td><td>' + str(self.viewing_summary_dictionary[obj]['rise']) + '</td><td>' + \
+                                 str(self.viewing_summary_dictionary[obj]['set']) + '</td><td>' + \
+                                 str(self.viewing_summary_dictionary[obj]['max_az']) + '</td><td>' + \
+                                 self.viewing_summary_dictionary[obj]['link'] + '</td><td>' + \
+                                 self.viewing_summary_dictionary[obj]['filters'] + '</td></tr>' + "\n"
+
+        self.html_summary = html_header(self.site_name, self.viewing_date_evening, self.plot_file_name,
+                                        self.half_dark_hours, 'true') + self.html_summary + html_footer()
+                    # note true means summary html
 
     def write_out_summary_html(self):
         with open('astronomy_report_summary.html', 'w') as f:
@@ -391,33 +399,43 @@ def return_sector(degree):
         return "W"
 
 
-def html_header(location_name, viewing_date, plot_file_name, half_dark_hours):
-    html_head = "<html><head><title>Astronomy Email</title><style> table, th,\
-      td {\
-        padding: 10px;\
-        border: 1px solid black;\
-        border-collapse: collapse;\
-      }\
+def html_header(location_name, viewing_date, plot_file_name, half_dark_hours, summary='false'):
+    html_head = "<html><head><title>Astronomy Email</title><style> table, th,\n \
+      td {\n \
+        padding: 3px; \n \
+        border: 1px solid black; \n \
+        border-collapse: collapse; \n \
+      } \n \
     </style></head>\n<body>\n"  # add location specific information
-    html_head += "<h1>Viewing Information for {0} on {1} Starting at Sundown</h1>\n".format(location_name, viewing_date)
-    html_head += '<H2>Sun and Moon Plot </h2><br><img src="cid:{0}"><br>\n'.format(plot_file_name)
-    html_head += "<h2>Viewing Items for {0} on {1}</h2>\n".format(location_name, viewing_date)
-    html_head += "<h3>Azimuth Chart</h3>\n"
-    html_head += "<table>\n" \
-                 "<tr><td>Direction</td><td>From</td><td>To</td></tr>\n" \
-                 "<tr><td> North</td>  <td>0&deg;  </td><td>89&deg;  </td></tr>\n"
-    html_head += "<tr><td> East </td>  <td>90&deg; </td><td>179&deg;  </td></tr>\n"
-    html_head += "<tr><td> South</td>  <td>180&deg;</td><td>269&deg;  </td></tr>\n"
-    html_head += "<tr><td> West </td>  <td>270&deg;</td><td>359&deg;  </td></tr> </table> <br>\n"
-    html_head += "<b>Jump to Hour: </b><a id=\"#Top\"></a>"
-    for hour in range((24 - half_dark_hours), 24, 1):
-        html_head += "<a href = \"#{0}\"> {0} </a> - ".format(hour)
-    for hour in range(0, half_dark_hours, 1):
-        html_head += "<a href = \"#{0}\"> {0} </a> - ".format(hour)
-    html_head += "<a href = \"#{0}\"> {0} </a> ".format(half_dark_hours)
-    html_head += "<table>\n"
-    html_head += header_row()
+    html_head += "<h1 style=\"font-family:verdana;\">Viewing Information for {0} on {1} Starting at Sundown</h1>\n".format(location_name, viewing_date)
+    html_head += '<img src="{0}">\n'.format(plot_file_name)
+    #  html_head += "<h2>Viewing Items for {0} on {1}</h2>\n".format(location_name, viewing_date)
+    if summary == 'false':
+        html_head += "<h3>Azimuth Chart</h3>\n"
+        html_head += "<table style=\"font-family:verdana;\">\n" \
+                     "<tr><td>Direction</td><td>From</td><td>To</td></tr>\n" \
+                     "<tr><td> North</td>  <td>0&deg;  </td><td>89&deg;  </td></tr>\n"
+        html_head += "<tr><td> East </td>  <td>90&deg; </td><td>179&deg;  </td></tr>\n"
+        html_head += "<tr><td> South</td>  <td>180&deg;</td><td>269&deg;  </td></tr>\n"
+        html_head += "<tr><td> West </td>  <td>270&deg;</td><td>359&deg;  </td></tr> </table> <br>\n"
+        html_head += "<b>Jump to Hour: </b><a id=\"#Top\"></a>"
+        for hour in range((24 - half_dark_hours), 24, 1):
+            html_head += "<a href = \"#{0}\"> {0} </a> - ".format(hour)
+        for hour in range(0, half_dark_hours, 1):
+            html_head += "<a href = \"#{0}\"> {0} </a> - ".format(hour)
+        html_head += "<a href = \"#{0}\"> {0} </a> ".format(half_dark_hours)
+        html_head += "<table>\n"
+        html_head += header_row()
+    else:
+        html_head += "<table style=\"font-family:verdana;\">\n"
+        html_head += summary_header_row()
     return html_head
+
+
+def summary_header_row():
+    return "<tr><td><b>Object</b></td><td><b>Type</b></td><td><b>Rise Hour</b></td><td><b>Set Hour</b></td>" \
+           "<td><b>Max Altitude</b></td><td><b>Finder Chart</b><br></td><td><b>Suggested Filter" \
+           "</b></td></tr>\n"
 
 
 def header_row():
@@ -452,8 +470,8 @@ def main():
                 m_id = "m" + str(m_num)
                 print("Working on: {0}".format(m_id))
                 scan_sky.check_sky_tonight(m_id)
-                if m_num > 3:
-                    break
+                #if m_num > 3:
+                    # break
                     #pass
                 #   sys.exit()
     # Sort The found data
@@ -463,6 +481,7 @@ def main():
     print("Printing Out Results")
     scan_sky.write_out_html()
     scan_sky.make_summary_html()
+    scan_sky.write_out_summary_html()
     # Send email if the mail JSON file is present
     print("Sending Email")
     email = Mail(scan_sky.plot_file_name)
