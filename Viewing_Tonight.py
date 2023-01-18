@@ -34,7 +34,7 @@ import matplotlib.pyplot as plt
 from astropy.coordinates import get_sun
 from astropy.coordinates import get_moon
 from Messier import Messier
-
+from collections import defaultdict
 
 class Mail:  # need to add lots of error checking in the functions here
     data = {}
@@ -164,15 +164,19 @@ class Viewing:
         self.viewing_frame = AltAz(obstime=self.viewing_times, location=self.viewing_location)
         self.sun_moon_viewing_frame = AltAz(obstime=self.sun_moon_viewing_times, location=self.viewing_location)
         self.html = ''
+        self.html_summary = ''
         self.plot_file_name = 'sun_moon_plot.png'
         self.viewing_index = {}  # mon*10000+day*100+hour, dictionary index
         self.viewing_dictionary = {}  # key dictionary index, value html table line
+        self.viewing_summary_dictionary = {} # key dictionary index, value html table line
         self.v_i_ctr = 0
         self.dusk = ''
         self.sunset = ''
         self.sunrise = ''
         self.dawn = ''
         self.half_dark_hours = 0
+        self.viewing_summary_dictionary = defaultdict(dict) # calculate general info for summary view
+
 
     def sort_data(self):
         viewing_copy = self.viewing_index
@@ -193,7 +197,7 @@ class Viewing:
                              " {0}</a> </td></tr>".format(hour)
                 self.html += header_row()
             self.html += self.viewing_dictionary[row[1]]
-        self.html = html_header(self.site_name, self.viewing_date_evening , self.plot_file_name, self.half_dark_hours) \
+        self.html = html_header(self.site_name, self.viewing_date_evening, self.plot_file_name, self.half_dark_hours) \
                     + self.html + html_footer()
 
     def adjust_delta_midnight(self):
@@ -264,6 +268,12 @@ class Viewing:
         return str(datetime.date(yr, m, d) + datetime.timedelta(1))
 
     def check_sky_tonight(self, obj):
+        # set summary base values for object
+        self.viewing_summary_dictionary[obj]["rise"] = 999  # set rise time to a default num to compare to
+        self.viewing_summary_dictionary[obj]["set"] = 0 # basically same as above
+        self.viewing_summary_dictionary[obj]["max_az"] = 0
+
+        # Move on to the calculation
         if obj in self.planet_list:
             midnight = Time(self.date + ' 00:00:00')
             sky_obj = get_body(obj, midnight)
@@ -318,14 +328,35 @@ class Viewing:
                 key = int(omon) * 10000 + int(oday) * 100 + int(ohour)
                 self.viewing_index[self.v_i_ctr] = key
                 self.viewing_dictionary[self.v_i_ctr] = table_row
+                # Set summary info
+                if self.viewing_summary_dictionary[obj]["rise"] == 999:
+                    self.viewing_summary_dictionary[obj]["rise"] = obs_hour
+                    self.viewing_summary_dictionary[obj]["type"] = object_type
+                    self.viewing_summary_dictionary[obj]["date"] = obs_date
+                    self.viewing_summary_dictionary[obj]["filters"] = suggested_filters
+                    self.viewing_summary_dictionary[obj]["link"] = finder_link
+                self.viewing_summary_dictionary[obj]["set"] = obs_hour  #set to hour found here as this will be the last
+                if d > self.viewing_summary_dictionary[obj]["max_az"]:
+                    self.viewing_summary_dictionary[obj]["max_az"] = d  #note d is altitude, not sure why i left that
+                # incriment Counters
                 self.v_i_ctr += 1
 
     def write_out_html(self):
         with open('astronomy_report.html', 'w') as f:
             print(self.html, file=f)
 
+    def make_summary_html(self):
+        for obj in self.viewing_summary_dictionary:
+            print("\nsummary " + obj)
+            for key, value in self.viewing_summary_dictionary[obj].items():
+                print("\t" + key + ' ' + str(value) + ', ')
+
+    def write_out_summary_html(self):
+        with open('astronomy_report_summary.html', 'w') as f:
+            print(self.html_summary, file=f)
+
     def add_footer(self):
-        self.html = html_header(self.site_name, self.viewing_date_evening , self.plot_file_name, self.half_dark_hours,
+        self.html = html_header(self.site_name, self.viewing_date_evening, self.plot_file_name, self.half_dark_hours,
                                 self.utcoffset_int) + self.html + html_footer()
 
 
@@ -431,6 +462,7 @@ def main():
     # Print out Results
     print("Printing Out Results")
     scan_sky.write_out_html()
+    scan_sky.make_summary_html()
     # Send email if the mail JSON file is present
     print("Sending Email")
     email = Mail(scan_sky.plot_file_name)
