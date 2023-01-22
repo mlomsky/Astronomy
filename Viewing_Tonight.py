@@ -33,8 +33,10 @@ from astropy.visualization import astropy_mpl_style, quantity_support
 import matplotlib.pyplot as plt
 from astropy.coordinates import get_sun
 from astropy.coordinates import get_moon
+from PyAstronomy import pyasl # Using this to get Lunar Phase
 from Messier import Messier
 from collections import defaultdict
+
 
 class Mail:  # need to add lots of error checking in the functions here
     data = {}
@@ -149,6 +151,7 @@ class Viewing:
         self.lat = lat
         self.long = long
         self.date = self.fix_date(date)
+        self.moon_phase_pct = get_lunar_phase(self.date)
         self.viewing_date_evening = str(datetime.date(int(date[0:4]), int(date[5:7]), int(date[8:10])))
         self.site_name = name
         self.height = height
@@ -252,9 +255,9 @@ class Viewing:
         plt.xlim(-12 * u.hour, 12 * u.hour)
         plt.xticks((np.arange(13) * 2 - 12) * u.hour)
         plt.ylim(0 * u.deg, 90 * u.deg)
-        plt.xlabel('Hours from EDT Midnight on {0}'.format(self.date))
+        plt.xlabel('Hours from Midnight on {0}'.format(self.date))
         plt.ylabel('Altitude [deg]')
-        plt.title('Sun and Moon plot for {0}'.format(self.site_name))
+        plt.title('Sun and Moon plot at {0} with {1}% moon'.format(self.site_name, self.moon_phase_pct))
         plt.savefig(self.plot_file_name)
         self.get_sunset(sunaltazs_viewing_date)
 
@@ -444,6 +447,17 @@ def header_row():
            "</b></td></tr>\n"
 
 
+def get_lunar_phase(lunar_date):
+    print(lunar_date)
+    yr = int(lunar_date[0:4])
+    m = int(lunar_date[5:7])
+    d = int(lunar_date[8:10])
+    new_date = datetime.datetime(yr, m, d)
+    ph = pyasl.jdcnv(new_date)
+    return int(pyasl.moonphase(ph) * 100)  # moon phase returns a float between 0 and 1
+#  pyasl.jdconv converts the date to the date format that moonphase needs to use
+
+
 def main():
     # Load JSON data
     viewing_location = Location()
@@ -470,8 +484,8 @@ def main():
                 m_id = "m" + str(m_num)
                 print("Working on: {0}".format(m_id))
                 scan_sky.check_sky_tonight(m_id)
-                #if m_num > 3:
-                    # break
+                if m_num > 3:
+                     break
                     #pass
                 #   sys.exit()
     # Sort The found data
