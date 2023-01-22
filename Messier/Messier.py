@@ -125,9 +125,7 @@ class MessierData:
                                        'recommended)',
                                 'm42': 'UHC/OIII (near-tie)*',
                                 'm43': 'H-BETA (UHC and Deep-Sky also help)',
-                                'm57': 'UHC/OIII. Nebula is bright and small enough not to really benefit enormously '
-                                       'from filter use, but UHC does improve it to a degree (H-BETA is NOT '
-                                       'recommended!)',
+                                'm57': 'UHC/OIII.  UHC does improve it to a degree',
                                 'm76': 'UHC/OIII (H-BETA NOT recommended!)',
                                 'm97': 'OIII/UHC (H-beta *not* recommended)'}
 

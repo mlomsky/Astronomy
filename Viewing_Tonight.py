@@ -179,6 +179,23 @@ class Viewing:
         self.dawn = ''
         self.half_dark_hours = 0
         self.viewing_summary_dictionary = defaultdict(dict)  # calculate general info for summary view
+        self.summary_page_information = self.set_summary_page_information()
+
+    def set_summary_page_information(self):
+        pageinfo = "The information here is intended to help you discover items in the night sky on the date shown "\
+            + "in the location shown.  The chart shows when the sundown is, grey, and when the sun stops illuminating "\
+            + "the sky, black. The label tells you how much of the moon is illuminated, and less is better. The goal is"\
+            + " to have a night sky without the illumination of the sun or moon.  <br><br> The table below shows when "\
+            + "the planets and <a href = \"https://en.wikipedia.org/wiki/Messier_object\">Messier objects</a> will be "\
+            + "above the horizon, <b>rise hour</b>, and when it will move below the horizon, <b>set hour</b>. <b> Rise"\
+            + " Hour </b> starts at sundown because you won't see the object earlier than sundown. <b>Max altitude</b>"\
+            + " tells you"\
+            + " how high in the sky it will be during the night when it's at the highest point in the sky on that day "\
+            + "from that location. <b>Finder Chart</b> shows you a star map to help you know what stars are near the object. "\
+            + "The last column tells you what filter some of us think shows the most detail, but this is rather "\
+            + "subjective.  No filters are actually needed."
+
+        return pageinfo
 
     def sort_data(self):
         viewing_copy = self.viewing_index
@@ -257,7 +274,7 @@ class Viewing:
         plt.ylim(0 * u.deg, 90 * u.deg)
         plt.xlabel('Hours from Midnight on {0}'.format(self.date))
         plt.ylabel('Altitude [deg]')
-        plt.title('Sun and Moon plot at {0} with {1}% moon'.format(self.site_name, self.moon_phase_pct))
+        plt.title('Sun & Moon Details at {0} with {1}% Moon '.format(self.site_name, self.moon_phase_pct))
         plt.savefig(self.plot_file_name)
         self.get_sunset(sunaltazs_viewing_date)
 
@@ -359,7 +376,7 @@ class Viewing:
                                  self.viewing_summary_dictionary[obj]['filters'] + '</td></tr>' + "\n"
 
         self.html_summary = html_header(self.site_name, self.viewing_date_evening, self.plot_file_name,
-                                        self.half_dark_hours, 'true') + self.html_summary + html_footer()
+                                        self.half_dark_hours, 'true', self.summary_page_information) + self.html_summary + html_footer()
                     # note true means summary html
 
     def write_out_summary_html(self):
@@ -402,8 +419,8 @@ def return_sector(degree):
         return "W"
 
 
-def html_header(location_name, viewing_date, plot_file_name, half_dark_hours, summary='false'):
-    html_head = "<html><head><title>Astronomy Email</title><style> table, th,\n \
+def html_header(location_name, viewing_date, plot_file_name, half_dark_hours, summary='false', summary_page_info = ''):
+    html_head = "<html><head><title>Astronomy Observation Suggestions</title><style> table, th,\n \
       td {\n \
         padding: 3px; \n \
         border: 1px solid black; \n \
@@ -411,7 +428,9 @@ def html_header(location_name, viewing_date, plot_file_name, half_dark_hours, su
       } \n \
     </style></head>\n<body>\n"  # add location specific information
     html_head += "<h1 style=\"font-family:verdana;\">Viewing Information for {0} on {1} Starting at Sundown</h1>\n".format(location_name, viewing_date)
+    html_head += "<table> <tr><td>\n"
     html_head += '<img src="{0}">\n'.format(plot_file_name)
+    html_head += "</td><td> " + summary_page_info + " </td></tr>\n</table>\n"
     #  html_head += "<h2>Viewing Items for {0} on {1}</h2>\n".format(location_name, viewing_date)
     if summary == 'false':
         html_head += "<h3>Azimuth Chart</h3>\n"
@@ -437,8 +456,8 @@ def html_header(location_name, viewing_date, plot_file_name, half_dark_hours, su
 
 def summary_header_row():
     return "<tr><td><b>Object</b></td><td><b>Type</b></td><td><b>Rise Hour</b></td><td><b>Set Hour</b></td>" \
-           "<td><b>Max Altitude</b></td><td><b>Finder Chart</b><br></td><td><b>Suggested Filter" \
-           "</b></td></tr>\n"
+           "<td><a href=\"https://en.wikipedia.org/wiki/Horizontal_coordinate_system\"><b>Max Altitude</b></a>" \
+           "</td><td><b>Finder Chart</b><br></td><td><b>Suggested Filter</b></td></tr>\n"
 
 
 def header_row():
@@ -484,8 +503,8 @@ def main():
                 m_id = "m" + str(m_num)
                 print("Working on: {0}".format(m_id))
                 scan_sky.check_sky_tonight(m_id)
-                if m_num > 3:
-                     break
+                #if m_num > 3:
+                     #break
                     #pass
                 #   sys.exit()
     # Sort The found data
