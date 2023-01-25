@@ -8,7 +8,7 @@ I want a program that can handle a few scenarios.  Basically I want to give it a
 location and an object (or list) and then have it give me a plot or some AltAz
 numbers for when and where the object would be available
 #### Basic program
-* command line location and object
+* :x: command line location and object
 * :heavy_check_mark: return AltAZ table at a few key times in HTML document 
     * :heavy_check_mark: key times meaning +10deg above horizon, 30deg, 45deg
     * :heavy_check_mark: altitude at key times??
@@ -29,14 +29,17 @@ numbers for when and where the object would be available
 * make it work as an executable with pyinstaller
 * https://ourcodeworld.com/articles/read/273/how-to-create-an-executable-exe-from-a-python-script-in-windows-using-pyinstaller
 #### Upgrade 5
-* it occurs to me that I should also make the background black and the text white as the intention is for this to be viewied at night or in some darkeness where as if I print it out, I would reverse that.  hmm, perhaps I need a printing out option.
-* this will need to be described further
+* :x: it occurs to me that I should also make the background black and the text white as the intention is for this to be viewied at night or in some darkeness where as if I print it out, I would reverse that.  hmm, perhaps I need a printing out option.
+* :x: this will need to be described further
 #### Upgrade 6 - Ideas from tonights (10-29) club board meeting
-* add link from object name to nasa page for each messier object
+* :x: add link from object name to nasa page for each messier object
 * :heavy_check_mark: add alt az link to wikipedia and a chart explaining AZ map to compass points
-* add column headers to each hour block
+* :x: add column headers to each hour block
 #### Upgrade 7
 * :heavy_check_mark: find calc api or something to link lunar illumination / phase
+#### Upgrade 8
+* add auto convert to pdf with active links
+* add section with definition of my terms at the bottom of the page
 ## Brainstorming
 * accuweather has lots of info
     * https://developer.accuweather.com/apis
