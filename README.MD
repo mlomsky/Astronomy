@@ -39,6 +39,8 @@ numbers for when and where the object would be available
 * :heavy_check_mark: find calc api or something to link lunar illumination / phase
 #### Upgrade 8
 * add auto convert to pdf with active links
+   * https://pyshark.com/convert-html-to-pdf-using-python/#convert-webpage-to-pdf-using-python
+   * https://wkhtmltopdf.org/usage/wkhtmltopdf.txt
 * add section with definition of my terms at the bottom of the page
 ## Brainstorming
 * accuweather has lots of info
