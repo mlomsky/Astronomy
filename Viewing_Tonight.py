@@ -36,6 +36,7 @@ from astropy.coordinates import get_moon
 from PyAstronomy import pyasl # Using this to get Lunar Phase
 from Messier import Messier
 from collections import defaultdict
+import pdfkit
 
 
 class Mail:  # need to add lots of error checking in the functions here
@@ -180,6 +181,7 @@ class Viewing:
         self.half_dark_hours = 0
         self.viewing_summary_dictionary = defaultdict(dict)  # calculate general info for summary view
         self.summary_page_information = self.set_summary_page_information()
+        self.summary_filename = 'astronomy_report_summary.html'
 
     def set_summary_page_information(self):
         pageinfo = "The information here is intended to help you discover items in the night sky on the date shown "\
@@ -380,7 +382,7 @@ class Viewing:
                     # note true means summary html
 
     def write_out_summary_html(self):
-        with open('astronomy_report_summary.html', 'w') as f:
+        with open(self.summary_filename, 'w') as f:
             print(self.html_summary, file=f)
 
     def add_footer(self):
@@ -477,6 +479,27 @@ def get_lunar_phase(lunar_date):
 #  pyasl.jdconv converts the date to the date format that moonphase needs to use
 
 
+def convert_html_to_pdf(html_filename):
+    # Define path to wkhtmltopdf.exe
+    path_to_wkhtmltopdf = r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe'
+
+    # Define path to HTML file
+    path_to_file = html_filename
+
+    # Point pdfkit configuration to wkhtmltopdf.exe
+    config = pdfkit.configuration(wkhtmltopdf=path_to_wkhtmltopdf)
+
+    # set options
+    options = {
+        'enable-external-links': None,
+        "enable-local-file-access": None,
+        'orientation': 'Landscape'
+    }
+
+    # Convert HTML file to PDF
+    pdfkit.from_file(path_to_file, output_path='sample.pdf', configuration=config, options=options)
+
+
 def main():
     # Load JSON data
     viewing_location = Location()
@@ -503,8 +526,8 @@ def main():
                 m_id = "m" + str(m_num)
                 print("Working on: {0}".format(m_id))
                 scan_sky.check_sky_tonight(m_id)
-                #if m_num > 3:
-                     #break
+                if m_num > 3:
+                     break
                     #pass
                 #   sys.exit()
     # Sort The found data
@@ -515,6 +538,8 @@ def main():
     scan_sky.write_out_html()
     scan_sky.make_summary_html()
     scan_sky.write_out_summary_html()
+    # Convert Summary HTML to pdf
+    convert_html_to_pdf(scan_sky.summary_filename)
     # Send email if the mail JSON file is present
     print("Sending Email")
     email = Mail(scan_sky.plot_file_name)
