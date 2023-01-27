@@ -46,6 +46,7 @@ Any item with an X means I changed my mind on that enhancement, and the check, o
 * :heavy_check_mark: add section with definition of my terms at the bottom of the page
 #### Upgrade 9
 * add a difficulty scale column (easy/medium/hard) via images green/amber/red
+* add max altitude time
 ## Brainstorming
 * accuweather has lots of info
     * https://developer.accuweather.com/apis
