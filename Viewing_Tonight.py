@@ -430,7 +430,8 @@ def html_header(location_name, viewing_date, plot_file_name, half_dark_hours, su
         border-collapse: collapse; \n \
       } \n \
     </style></head>\n<body>\n"  # add location specific information
-    html_head += "<h1 style=\"font-family:verdana;\">Viewing Information for {0} on {1} Starting at Sundown</h1>\n".format(location_name, viewing_date)
+    html_head += "<h1 style=\"font-family:verdana;\">Viewing Information for {0} </h1>\n"\
+                 " <h2>on {1} Starting at Sundown</h2>\n".format(location_name, viewing_date)
     html_head += "<table> <tr><td>\n"
     html_head += '<img src="{0}">\n'.format(plot_file_name)
     html_head += "</td><td> " + summary_page_info + " </td></tr>\n</table>\n"
