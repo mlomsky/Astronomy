@@ -182,6 +182,7 @@ class Viewing:
         self.viewing_summary_dictionary = defaultdict(dict)  # calculate general info for summary view
         self.summary_page_information = self.set_summary_page_information()
         self.summary_filename = 'astronomy_report_summary.html'
+        self.summary_pdf_filename = 'astronomy_report_summary.pdf'
 
     def set_summary_page_information(self):
         pageinfo = "The information here is intended to help you discover items in the night sky on the date shown "\
@@ -457,10 +458,16 @@ def html_header(location_name, viewing_date, plot_file_name, half_dark_hours, su
 
 
 def summary_header_row():
-    return "<tr><td><b>Object</b></td><td><b>Type</b></td><td><b>Rise Hour</b></td><td><b>Set Hour</b></td>" \
+    return  "<tr><td colspan=8> </td></tr>\n"\
+        "<tr><td colspan=8><b>Rise Hour</b> is the hour that the object will be above the horizon after sundown. "\
+            "If the object was in the sky before sundown, then the hour shown will be the hour of sundown.</td></tr>\n"\
+            "<tr><td colspan=8><b>Set Hour</b> is the hour that the object will fall below the horizon.  This hour "\
+            "can be the same hour as the Rise Hour if the object was in the sky during the day and is setting in that "\
+            "hour. </td></tr>\n" \
+            "<tr><td colspan=8> </td></tr>\n "\
+            "<tr bgcolor=lightgrey><td><b>Object</b></td><td><b>Type</b></td><td><b>Rise Hour</b></td><td><b>Set Hour</b></td>" \
            "<td><a href=\"https://en.wikipedia.org/wiki/Horizontal_coordinate_system\"><b>Max Altitude</b></a>" \
            "</td><td><b>Finder Chart</b><br></td><td><b>Suggested Filter</b></td></tr>\n"
-
 
 def header_row():
     return "<tr><td><b>Object</b></td><td><b>Type</b></td><td><b>Date</b></td><td><b>Hour</b></td>" \
@@ -479,17 +486,17 @@ def get_lunar_phase(lunar_date):
 #  pyasl.jdconv converts the date to the date format that moonphase needs to use
 
 
-def convert_html_to_pdf(html_filename):
+def convert_html_to_pdf(html_filename, pdf_filename):
     # Define path to wkhtmltopdf.exe
     path_to_wkhtmltopdf = r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe'
-
-    # Define path to HTML file
-    path_to_file = html_filename
 
     # Point pdfkit configuration to wkhtmltopdf.exe
     config = pdfkit.configuration(wkhtmltopdf=path_to_wkhtmltopdf)
 
     # set options
+    # orientation makes it look better landscape vs portrait
+    # enable-external-links was key to enable them to work
+    # enable-local-file-access is needed to alllow the local image of the sun moon chart to be used
     options = {
         'enable-external-links': None,
         "enable-local-file-access": None,
@@ -497,7 +504,7 @@ def convert_html_to_pdf(html_filename):
     }
 
     # Convert HTML file to PDF
-    pdfkit.from_file(path_to_file, output_path='sample.pdf', configuration=config, options=options)
+    pdfkit.from_file(html_filename, output_path=pdf_filename, configuration=config, options=options)
 
 
 def main():
@@ -539,7 +546,7 @@ def main():
     scan_sky.make_summary_html()
     scan_sky.write_out_summary_html()
     # Convert Summary HTML to pdf
-    convert_html_to_pdf(scan_sky.summary_filename)
+    convert_html_to_pdf(scan_sky.summary_filename, scan_sky.summary_pdf_filename)
     # Send email if the mail JSON file is present
     print("Sending Email")
     email = Mail(scan_sky.plot_file_name)
