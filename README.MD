@@ -7,6 +7,8 @@
 I want a program that can handle a few scenarios.  Basically I want to give it a 
 location and an object (or list) and then have it give me a plot or some AltAz
 numbers for when and where the object would be available
+### Please Note
+Any item with an X means I changed my mind on that enhancement, and the check, obviously means its done.
 #### Basic program
 * :x: command line location and object
 * :heavy_check_mark: return AltAZ table at a few key times in HTML document 
@@ -42,6 +44,8 @@ numbers for when and where the object would be available
    * https://pyshark.com/convert-html-to-pdf-using-python/#convert-webpage-to-pdf-using-python
    * https://wkhtmltopdf.org/usage/wkhtmltopdf.txt
 * :heavy_check_mark: add section with definition of my terms at the bottom of the page
+#### Upgrade 9
+* add a difficulty scale column (easy/medium/hard) via images green/amber/red
 ## Brainstorming
 * accuweather has lots of info
     * https://developer.accuweather.com/apis
