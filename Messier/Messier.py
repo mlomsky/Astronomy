@@ -121,8 +121,7 @@ class MessierData:
                                 'm16': 'UHC/OIII, but H-BETA hurts the view',
                                 'm17': 'OIII/UHC (H-BETA not recommended)',
                                 'm20': 'UHC/H-BETA',
-                                'm27': 'UHC (OIII also useful in showing some inner detail, but H-BETA is NOT '
-                                       'recommended)',
+                                'm27': 'UHC (OIII also useful in showing some inner detail)',
                                 'm42': 'UHC/OIII (near-tie)*',
                                 'm43': 'H-BETA (UHC and Deep-Sky also help)',
                                 'm57': 'UHC/OIII.  UHC does improve it to a degree',

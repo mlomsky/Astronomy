@@ -183,6 +183,7 @@ class Viewing:
         self.summary_page_information = self.set_summary_page_information()
         self.summary_filename = 'astronomy_report_summary.html'
         self.summary_pdf_filename = 'astronomy_report_summary.pdf'
+        self.my_messier = Messier.MessierData()
 
     def set_summary_page_information(self):
         pageinfo = "The information here is intended to help you discover items in the night sky on the date shown "\
@@ -318,13 +319,21 @@ class Viewing:
             object_type = 'Planet'
             suggested_filters = ''
             finder_link = ''
+            difficulty_html = ''
             if obj not in self.planet_list:
-                my_messier = Messier.MessierData()
-                object_type = my_messier.object_type[obj]
+                object_type = self.my_messier.object_type[obj]
                 finder_link = "<a href=\"https://freestarcharts.com/images/Articles/Messier" \
                               "/Single/{0}_Finder_Chart.pdf\" target=\"_blank\">Finder Chart</a>".format(obj.upper())
-                if obj in my_messier.messier_filters.keys():
-                    suggested_filters = my_messier.messier_filters[obj]
+                if obj in self.my_messier.messier_filters.keys():
+                    suggested_filters = self.my_messier.messier_filters[obj]
+                if obj in self.my_messier.messier_difficulty.keys() and self.my_messier.messier_difficulty[obj] == 'easy':
+                    difficulty_html = '<span class="dotgreen"></span>'
+                elif obj in self.my_messier.messier_difficulty.keys() and self.my_messier.messier_difficulty[obj] == 'medium':
+                    difficulty_html = '<span class="dotorange"></span>'
+                elif obj in self.my_messier.messier_difficulty.keys() and self.my_messier.messier_difficulty[obj] == 'hard':
+                    difficulty_html = '<span class="dotred"></span>'
+                #if self.viewing_summary_dictionary[obj]["rise"] == 999:
+                    #continue
 
             skip_print = True
             if 0 <= int(omin) < 5:
@@ -357,10 +366,12 @@ class Viewing:
                     self.viewing_summary_dictionary[obj]["date"] = obs_date
                     self.viewing_summary_dictionary[obj]["filters"] = suggested_filters
                     self.viewing_summary_dictionary[obj]["link"] = finder_link
-                self.viewing_summary_dictionary[obj]["set"] = obs_hour  #set to hour found here as this will be the last
+                    self.viewing_summary_dictionary[obj]["difficulty"] = difficulty_html
+                self.viewing_summary_dictionary[obj]["set"] = obs_hour  # set to hour found here as this will be the last
                 if d > self.viewing_summary_dictionary[obj]["max_az"]:
-                    self.viewing_summary_dictionary[obj]["max_az"] = d  #note d is altitude, not sure why i left that
-                # incriment Counters
+                    self.viewing_summary_dictionary[obj]["max_az"] = d  # note d is altitude, not sure why i left that
+                    self.viewing_summary_dictionary[obj]["max_az_hr"] = obs_hour
+                # increment Counters
                 self.v_i_ctr += 1
 
     def write_out_html(self):
@@ -369,18 +380,22 @@ class Viewing:
 
     def make_summary_html(self):
         for obj in self.viewing_summary_dictionary:
-            if self.viewing_summary_dictionary[obj]["rise"] == 999:
+            if self.viewing_summary_dictionary[obj]['rise'] == 999 and self.viewing_summary_dictionary[obj]['set'] == 0:
                 continue
-            self.html_summary += '<tr><td>' + obj.capitalize() + '</td><td>' + self.viewing_summary_dictionary[obj]['type'].capitalize() + \
-                                 '</td><td>' + str(self.viewing_summary_dictionary[obj]['rise']) + '</td><td>' + \
+            self.html_summary += '<tr><td>' + obj.capitalize() + '</td><td>' + \
+                                 self.viewing_summary_dictionary[obj]['type'].capitalize() + \
+                                 '</td><td style="text-align:center">' + \
+                                 self.viewing_summary_dictionary[obj]['difficulty'] + '</td><td>' + \
+                                 str(self.viewing_summary_dictionary[obj]['rise']) + '</td><td>' + \
                                  str(self.viewing_summary_dictionary[obj]['set']) + '</td><td>' + \
-                                 str(self.viewing_summary_dictionary[obj]['max_az']) + '</td><td>' + \
+                                 str(int(self.viewing_summary_dictionary[obj]['max_az'])) + '&#0176 @ ' + \
+                                 str(self.viewing_summary_dictionary[obj]['max_az_hr']) + '</td><td>' + \
                                  self.viewing_summary_dictionary[obj]['link'] + '</td><td>' + \
                                  self.viewing_summary_dictionary[obj]['filters'] + '</td></tr>' + "\n"
-
         self.html_summary = html_header(self.site_name, self.viewing_date_evening, self.plot_file_name,
-                                        self.half_dark_hours, 'true', self.summary_page_information) + self.html_summary + html_footer()
-                    # note true means summary html
+                                        self.half_dark_hours, 'true', self.summary_page_information) + \
+                            self.html_summary + html_footer()
+                            # note true means summary html
 
     def write_out_summary_html(self):
         with open(self.summary_filename, 'w') as f:
@@ -423,12 +438,34 @@ def return_sector(degree):
 
 
 def html_header(location_name, viewing_date, plot_file_name, half_dark_hours, summary='false', summary_page_info = ''):
-    html_head = "<html><head><title>Astronomy Observation Suggestions</title><style> table, th,\n \
+    html_head = "<html><head><title>Astronomy Observation Suggestions</title>\n" \
+                "<style>table, th,\n \
       td {\n \
         padding: 3px; \n \
         border: 1px solid black; \n \
         border-collapse: collapse; \n \
       } \n \
+    .dotgreen {\n\
+      height: 15px;\n\
+      width: 15px;\n\
+      background-color: #008000;\n\
+      border-radius: 50%;\n\
+      display: inline-block;\n\
+    }\n\
+    .dotred{\n\
+      height: 15px;\n\
+      width: 15px;\n\
+      background-color: #FF0000;\n\
+      border-radius: 50%;\n\
+      display: inline-block;\n\
+    }\n\
+    .dotorange{\n\
+      height: 15px;\n\
+      width: 15px;\n\
+      background-color: #FF8C00;\n\
+      border-radius: 50%;\n\
+      display: inline-block;\n\
+    }\n\
     </style></head>\n<body>\n"  # add location specific information
     html_head += "<h1 style=\"font-family:verdana;\">Viewing Information for {0} </h1>\n"\
                  " <h2>on {1} Starting at Sundown</h2>\n".format(location_name, viewing_date)
@@ -459,16 +496,17 @@ def html_header(location_name, viewing_date, plot_file_name, half_dark_hours, su
 
 
 def summary_header_row():
-    return  "<tr><td colspan=8> </td></tr>\n"\
-        "<tr><td colspan=8><b>Rise Hour</b> is the hour that the object will be above the horizon after sundown. "\
+    return "<tr><td colspan=9> </td></tr>\n"\
+           "<tr><td colspan=9><b>Rise Hour</b> is the hour that the object will be above the horizon after sundown. "\
             "If the object was in the sky before sundown, then the hour shown will be the hour of sundown.</td></tr>\n"\
-            "<tr><td colspan=8><b>Set Hour</b> is the hour that the object will fall below the horizon.  This hour "\
+            "<tr><td colspan=9><b>Set Hour</b> is the hour that the object will fall below the horizon.  This hour "\
             "can be the same hour as the Rise Hour if the object was in the sky during the day and is setting in that "\
             "hour. </td></tr>\n" \
-            "<tr><td colspan=8> </td></tr>\n "\
-            "<tr bgcolor=lightgrey><td><b>Object</b></td><td><b>Type</b></td><td><b>Rise Hour</b></td><td><b>Set Hour</b></td>" \
-           "<td><a href=\"https://en.wikipedia.org/wiki/Horizontal_coordinate_system\"><b>Max Altitude</b></a>" \
-           "</td><td><b>Finder Chart</b><br></td><td><b>Suggested Filter</b></td></tr>\n"
+            "<tr><td colspan=9> </td></tr>\n "\
+            "<tr bgcolor=lightgrey><td><b>Object</b></td><td><b>Type</b></td><td><b>Difficulty</b></td>"\
+            "<td><b>Rise Hour</b></td><td><b>Set Hour</b></td>" \
+            "<td><a href=\"https://en.wikipedia.org/wiki/Horizontal_coordinate_system\"><b>Max Altitude</b></a>" \
+            "</td><td><b>Finder Chart</b><br></td><td><b>Suggested Filter</b></td></tr>\n"
 
 def header_row():
     return "<tr><td><b>Object</b></td><td><b>Type</b></td><td><b>Date</b></td><td><b>Hour</b></td>" \
@@ -534,8 +572,8 @@ def main():
                 m_id = "m" + str(m_num)
                 print("Working on: {0}".format(m_id))
                 scan_sky.check_sky_tonight(m_id)
-                if m_num > 3:
-                     break
+                #if m_num > 3:
+                     #break
                     #pass
                 #   sys.exit()
     # Sort The found data
