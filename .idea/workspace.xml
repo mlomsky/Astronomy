@@ -3,7 +3,9 @@
   <component name="ChangeListManager">
     <list default="true" id="10572e4e-23a5-4013-be02-bba3c24c790c" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Viewing_Tonight.py" beforeDir="false" afterPath="$PROJECT_DIR$/Viewing_Tonight.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/astronomy_report.html" beforeDir="false" afterPath="$PROJECT_DIR$/astronomy_report.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/location.json" beforeDir="false" afterPath="$PROJECT_DIR$/location.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -28,12 +30,6 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;
-  }
-}</component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
       <recent name="C:\Users\hador\OneDrive\Documents\GitHub\Astronomy" />
@@ -63,5 +59,6 @@
         </entry>
       </map>
     </option>
+    <option name="oldMeFiltersMigrated" value="true" />
   </component>
 </project>
