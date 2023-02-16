@@ -186,18 +186,43 @@ class Viewing:
         self.my_messier = Messier.MessierData()
 
     def set_summary_page_information(self):
-        pageinfo = "The information here is intended to help you discover items in the night sky on the date shown "\
-            + "in the location shown.  The chart shows when the sundown is, grey, and when the sun stops illuminating "\
-            + "the sky, black. The label tells you how much of the moon is illuminated, and less is better. The goal is"\
-            + " to have a night sky without the illumination of the sun or moon.  <br><br> The table below shows when "\
-            + "the planets and <a href = \"https://en.wikipedia.org/wiki/Messier_object\">Messier objects</a> will be "\
-            + "above the horizon, <b>rise hour</b>, and when it will move below the horizon, <b>set hour</b>. <b> Rise"\
-            + " Hour </b> starts at sundown because you won't see the object earlier than sundown. <b>Max altitude</b>"\
-            + " tells you"\
-            + " how high in the sky it will be during the night when it's at the highest point in the sky on that day "\
-            + "from that location. <b>Finder Chart</b> shows you a star map to help you know what stars are near the object. "\
-            + "The last column tells you what filter some of us think shows the most detail, but this is rather "\
-            + "subjective.  No filters are actually needed."
+        pageinfo = """<h2> What is this page for?</h2>
+        The information on this page is intended to help you plan your observing session for the date
+         shown at the top of this page by providing a list of objects which will be visible in the sky over the course
+        of the evening.  The information provided here is applicable to the location shown at the very top of this page.
+        <br>
+        <h3>How to read the chart to the left </h3>
+        <ul>
+        <li>The time axis at the bottom of the chart presents midnight as 0. </li>
+        <li>The red line indicates the sun’s altitude over the course of the charted period.  Sunset (left) and sunrise 
+        (right) occur at the two points where the red line touches the bottom of the chart.</li>
+        <li>The grey shaded areas on the chart indicate twilight periods.  These are the periods when the sun continues
+         to illuminate sky after sunset or begins illuminating the sky before sunrise.</li>
+        <li>The grey dashed line indicates the moon’s altitude over the course of the charted period.  The current 
+        amount of lunar illumination is displayed as a percentage above the chart, with 0% indicating new moon, and 
+        100% indicating a full moon. </li>
+        <li>Ideal conditions for observing deep sky objects will most commonly take place during the period indicated 
+        by the black portion of the chart and with as little moon as possible.</li>
+        </ul>
+        <h2>What is the table below for?</h2>
+        The table below displays a list of planets and Messier objects which will be above the horizon between sunset 
+        and sunrise. 
+        <h3>Below Table Column Explanation</h3>
+        <ul>
+        <li><b>Rise Hour</b> indicates the earliest time at which the object may be observed.  The earliest time indicated by
+         the Rise Hour column will be sunset; this is because you (typically) won't be able to see the object earlier
+         than sundown.</li> 
+        <li><b>Set Hour</b> indicates the latest time at which the object may be observed.  The latest time indicated by
+         the Set Hour column will be sunrise; this is because you (typically) will no longer be able to see the object 
+         after sunrise.</li> 
+        <li><b>Max Altitude</b> provides the time at which the object will be highest in the sky and how high it will be at
+         that time. </li>  
+        <li><b>Finder Chart</b> contains a link to a star map to help you know what stars are near the object. </li>
+        <li><b>Suggested Filter</b> contains information regarding the filter(s) we believe will help reveal the most 
+         detail for an object, but this can be rather subjective.  Brighter objects typically do not require a filter.  
+         Fainter objects may be observed without a filter in ideal conditions, but the right filter can often bring 
+         out additional detail, especially when observing from light-polluted locations.</li>
+         </ul>"""
 
         return pageinfo
 
@@ -398,7 +423,9 @@ class Viewing:
                             # note true means summary html
 
     def write_out_summary_html(self):
-        with open(self.summary_filename, 'w') as f:
+        filename = self.date + '_' + self.site_name + '_' + self.summary_filename
+        filename = filename.replace(' ', '_')
+        with open(filename, 'w') as f:
             print(self.html_summary, file=f)
 
     def add_footer(self):
@@ -468,7 +495,7 @@ def html_header(location_name, viewing_date, plot_file_name, half_dark_hours, su
     }\n\
     </style></head>\n<body>\n"  # add location specific information
     html_head += "<h1 style=\"font-family:verdana;\">Viewing Information for {0} </h1>\n"\
-                 " <h2>on {1} Starting at Sundown</h2>\n".format(location_name, viewing_date)
+                 " <h2>For the evening of {1} through the following morning</h2>\n".format(location_name, viewing_date)
     html_head += "<table> <tr><td>\n"
     html_head += '<img src="{0}">\n'.format(plot_file_name)
     html_head += "</td><td> " + summary_page_info + " </td></tr>\n</table>\n"
@@ -496,13 +523,7 @@ def html_header(location_name, viewing_date, plot_file_name, half_dark_hours, su
 
 
 def summary_header_row():
-    return "<tr><td colspan=9> </td></tr>\n"\
-           "<tr><td colspan=9><b>Rise Hour</b> is the hour that the object will be above the horizon after sundown. "\
-            "If the object was in the sky before sundown, then the hour shown will be the hour of sundown.</td></tr>\n"\
-            "<tr><td colspan=9><b>Set Hour</b> is the hour that the object will fall below the horizon.  This hour "\
-            "can be the same hour as the Rise Hour if the object was in the sky during the day and is setting in that "\
-            "hour. </td></tr>\n" \
-            "<tr><td colspan=9> </td></tr>\n "\
+    return "<tr><td colspan=9> </td></tr>\n "\
             "<tr bgcolor=lightgrey><td><b>Object</b></td><td><b>Type</b></td><td><b>Difficulty</b></td>"\
             "<td><b>Rise Hour</b></td><td><b>Set Hour</b></td>" \
             "<td><a href=\"https://en.wikipedia.org/wiki/Horizontal_coordinate_system\"><b>Max Altitude</b></a>" \
