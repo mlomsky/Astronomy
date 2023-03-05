@@ -155,6 +155,7 @@ class Viewing:
         self.moon_phase_pct = get_lunar_phase(self.date)
         self.viewing_date_evening = str(datetime.date(int(date[0:4]), int(date[5:7]), int(date[8:10])))
         self.site_name = name
+        self.site_file_name = self.site_name.replace(' ', '-')
         self.height = height
         self.viewing_location = EarthLocation(lat=self.lat * u.deg, lon=self.long * u.deg, height=self.height * u.m)
         self.utcoffset_int = -4  # need to make this loadable from the viewing location
@@ -169,7 +170,7 @@ class Viewing:
         self.sun_moon_viewing_frame = AltAz(obstime=self.sun_moon_viewing_times, location=self.viewing_location)
         self.html = ''
         self.html_summary = ''
-        self.plot_file_name = 'sun_moon_plot.png'
+        self.plot_file_name = 'sun_moon_plot' + self.date + self.site_file_name + '.png'
         self.viewing_index = {}  # mon*10000+day*100+hour, dictionary index
         self.viewing_dictionary = {}  # key dictionary index, value html table line
         self.viewing_summary_dictionary = {}  # key dictionary index, value html table line
@@ -182,7 +183,7 @@ class Viewing:
         self.viewing_summary_dictionary = defaultdict(dict)  # calculate general info for summary view
         self.summary_page_information = self.set_summary_page_information()
         self.summary_filename = 'astronomy_report_summary.html'
-        self.summary_pdf_filename = 'astronomy_report_summary.pdf'
+        self.summary_pdf_filename = 'astronomy_report_summary' + self.date + self.site_file_name + '.pdf'
         self.my_messier = Messier.MessierData()
 
     def set_summary_page_information(self):
@@ -529,6 +530,7 @@ def summary_header_row():
             "<td><a href=\"https://en.wikipedia.org/wiki/Horizontal_coordinate_system\"><b>Max Altitude</b></a>" \
             "</td><td><b>Finder Chart</b><br></td><td><b>Suggested Filter</b></td></tr>\n"
 
+
 def header_row():
     return "<tr><td><b>Object</b></td><td><b>Type</b></td><td><b>Date</b></td><td><b>Hour</b></td>" \
            "<td><b>Altitude</b></td><td><b>Azimuth</b></td><td><b>Finder Chart</b><br></td><td><b>Suggested Filter" \
@@ -580,6 +582,8 @@ def main():
                        viewing_location.data["height"])
     # Plot Sun and Moon
     print("Plotting Sun and Moon")
+    filename = scan_sky.site_name.replace(' ', '-')
+    print(filename)
     scan_sky.plot_sun_moon()
     scan_sky.adjust_delta_midnight()
     # Get data for Planets
@@ -589,9 +593,10 @@ def main():
     # Get data for Target group
     if 'target_group' in viewing_targets.data:
         if viewing_targets.data["target_group"] == "messier":
+            print("Working on:")
             for m_num in range(1, scan_sky.messier_max):
                 m_id = "m" + str(m_num)
-                print("Working on: {0}".format(m_id))
+                print("{0}, ".format(m_id), end=" ")
                 scan_sky.check_sky_tonight(m_id)
                 #if m_num > 3:
                      #break
