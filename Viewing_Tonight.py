@@ -152,6 +152,7 @@ class Viewing:
         self.lat = lat
         self.long = long
         self.date = self.fix_date(date)
+        self.file_date = date
         self.moon_phase_pct = get_lunar_phase(self.date)
         self.viewing_date_evening = str(datetime.date(int(date[0:4]), int(date[5:7]), int(date[8:10])))
         self.site_name = name
@@ -182,8 +183,9 @@ class Viewing:
         self.half_dark_hours = 0
         self.viewing_summary_dictionary = defaultdict(dict)  # calculate general info for summary view
         self.summary_page_information = self.set_summary_page_information()
-        self.summary_filename = 'astronomy_report_summary.html'
-        self.summary_pdf_filename = 'astronomy_report_summary' + self.date + self.site_file_name + '.pdf'
+        self.summary_filename = self.file_date + '_' + self.site_name.replace(' ', '_') + '_' +\
+                                'astronomy_report_summary.html'
+        self.summary_pdf_filename = 'astronomy_report_summary' + self.file_date + self.site_file_name + '.pdf'
         self.my_messier = Messier.MessierData()
 
     def set_summary_page_information(self):
@@ -420,13 +422,11 @@ class Viewing:
                                  self.viewing_summary_dictionary[obj]['filters'] + '</td></tr>' + "\n"
         self.html_summary = html_header(self.site_name, self.viewing_date_evening, self.plot_file_name,
                                         self.half_dark_hours, 'true', self.summary_page_information) + \
-                            self.html_summary + html_footer()
-                            # note true means summary html
+                                        self.html_summary + html_footer()
+        # note true means summary html
 
     def write_out_summary_html(self):
-        filename = self.date + '_' + self.site_name + '_' + self.summary_filename
-        filename = filename.replace(' ', '_')
-        with open(filename, 'w') as f:
+        with open(self.summary_filename, 'w') as f:
             print(self.html_summary, file=f)
 
     def add_footer(self):
@@ -495,8 +495,8 @@ def html_header(location_name, viewing_date, plot_file_name, half_dark_hours, su
       display: inline-block;\n\
     }\n\
     </style></head>\n<body>\n"  # add location specific information
-    html_head += "<h1 style=\"font-family:verdana;\">Viewing Information for {0} </h1>\n"\
-                 " <h2>For the evening of {1} through the following morning</h2>\n".format(location_name, viewing_date)
+    html_head += "<h2 style=\"font-family:verdana;\">Viewing Information for {0} On the evening of {1} through the "\
+            "following morning</h2>\n".format(location_name, viewing_date)
     html_head += "<table> <tr><td>\n"
     html_head += '<img src="{0}">\n'.format(plot_file_name)
     html_head += "</td><td> " + summary_page_info + " </td></tr>\n</table>\n"
@@ -583,7 +583,6 @@ def main():
     # Plot Sun and Moon
     print("Plotting Sun and Moon")
     filename = scan_sky.site_name.replace(' ', '-')
-    print(filename)
     scan_sky.plot_sun_moon()
     scan_sky.adjust_delta_midnight()
     # Get data for Planets
@@ -593,15 +592,16 @@ def main():
     # Get data for Target group
     if 'target_group' in viewing_targets.data:
         if viewing_targets.data["target_group"] == "messier":
-            print("Working on:")
+            print("Working on: ", end='', flush=True)
             for m_num in range(1, scan_sky.messier_max):
                 m_id = "m" + str(m_num)
-                print("{0}, ".format(m_id), end=" ")
+                print("{0}, ".format(m_id), end='', flush=True)
                 scan_sky.check_sky_tonight(m_id)
                 #if m_num > 3:
                      #break
                     #pass
                 #   sys.exit()
+            print("Finished with Messier")
     # Sort The found data
     scan_sky.sort_data()
     scan_sky.set_html()
