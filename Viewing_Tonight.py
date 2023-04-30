@@ -115,6 +115,7 @@ class Location:
     def __init__(self):
         self.verify_json_exists()
         self.load_json()
+        print("Running for " + self.data["name"] + " on " + self.data["viewing_date"])
 
     def verify_json_exists(self):
         if not os.path.isfile(self.json_file_name):
@@ -258,12 +259,18 @@ class Viewing:
 
     def get_hours_sunset(self):
         midnight = datetime.datetime.strptime(self.viewing_date_midnight_time, '%Y-%m-%d %H:%M:%S')
+        if int(self.dusk[1:2]) < 0:
+            self.dusk = str(24 + int(self.dusk))
         dusktime = datetime.datetime.strptime(self.date + ' ' + self.dusk + ':00', '%Y-%m-%d %H:%M:%S')
         diff = midnight - dusktime
         self.half_dark_hours = round(diff.seconds / 3600)
 
     def get_sunset(self, sunaltaz):
         # note hour is utc, not local
+        from dateutil import tz
+        from datetime import datetime
+        from_zone = tz.gettz('UTC')
+        to_zone = tz.gettz('America/New_York')
         last_alt = 0
         first = True
         for altaz in sunaltaz:
@@ -271,19 +278,31 @@ class Viewing:
                 last_alt = altaz.alt
                 first = False
             if altaz.alt.is_within_bounds(0 * u.deg, 1 * u.deg):
-                ohour = int(str(altaz.obstime)[11:13]) - 4
-                omin = str(altaz.obstime)[14:16]
+                utc = datetime.strptime(str(altaz.obstime), '%Y-%m-%d %H:%M:%S.%f')
+                utc = utc.replace(tzinfo=from_zone)
+                ny_zone = utc.astimezone(to_zone)
+                ohour = str(ny_zone)[11:13]
+                omin = str(ny_zone)[14:16]
+                time = str(ny_zone)[11:16]
+                date = str(ny_zone)[0:10]
                 if last_alt > altaz.alt:
-                    self.dusk = str(ohour) + ':' + omin
+                    self.dusk = time
+                    self.date = date
                 else:
-                    self.sunrise = str(ohour) + ':' + omin
+                    self.sunrise = time
+                    self.date = date
             if altaz.alt.is_within_bounds(-20 * u.deg, -18 * u.deg):
-                ohour = int(str(altaz.obstime)[11:13]) - 4
-                omin = str(altaz.obstime)[14:16]
+                utc = datetime.strptime(str(altaz.obstime), '%Y-%m-%d %H:%M:%S.%f')
+                utc = utc.replace(tzinfo=from_zone)
+                ny_zone = utc.astimezone(to_zone)
+                time = str(ny_zone)[11:16]
+                date = str(ny_zone)[0:10]
                 if last_alt > altaz.alt:
-                    self.sunset = str(ohour) + ':' + omin
+                    self.sunset = time
+                    self.date = date
                 else:
-                    self.dawn = str(ohour) + ':' + omin
+                    self.dawn = time
+                    self.date = date
             last_alt = altaz.alt
 
     def plot_sun_moon(self):
@@ -538,7 +557,6 @@ def header_row():
 
 
 def get_lunar_phase(lunar_date):
-    print(lunar_date)
     yr = int(lunar_date[0:4])
     m = int(lunar_date[5:7])
     d = int(lunar_date[8:10])
@@ -586,9 +604,11 @@ def main():
     scan_sky.plot_sun_moon()
     scan_sky.adjust_delta_midnight()
     # Get data for Planets
+    print("Working on: ", end='', flush=True)
     for planet in scan_sky.planet_list:
-        print("Working on: {0}".format(planet))
+        print("{0}, ".format(planet), end='', flush=True)
         scan_sky.check_sky_tonight(planet)
+    print(" ")
     # Get data for Target group
     if 'target_group' in viewing_targets.data:
         if viewing_targets.data["target_group"] == "messier":
@@ -603,6 +623,7 @@ def main():
                 #   sys.exit()
             print("Finished with Messier")
     # Sort The found data
+    print("Sorting The Data")
     scan_sky.sort_data()
     scan_sky.set_html()
     # Print out Results
@@ -611,10 +632,11 @@ def main():
     scan_sky.make_summary_html()
     scan_sky.write_out_summary_html()
     # Convert Summary HTML to pdf
+    print("Making PDF")
     convert_html_to_pdf(scan_sky.summary_filename, scan_sky.summary_pdf_filename)
     # Send email if the mail JSON file is present
-    print("Sending Email")
-    email = Mail(scan_sky.plot_file_name)
+    #print("Sending Email")
+    #email = Mail(scan_sky.plot_file_name)
     # if email.mail_exists:
     # email.send_email(scan_sky.html, "see html version")
     # need to check API for caldwell list objects and other lists
