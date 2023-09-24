@@ -19,6 +19,7 @@
 import json
 import os.path
 import sys
+import astropy
 import astropy.units as u
 import numpy as np
 from astropy.time import Time
