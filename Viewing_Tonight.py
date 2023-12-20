@@ -440,14 +440,7 @@ def html_footer():
 
 
 def return_sector(degree):
-    if 0 <= degree < 90:
-        return "N"
-    elif 90 <= degree < 180:
-        return "E"
-    elif 180 <= degree < 270:
-        return "S"
-    elif 270 <= degree < 3590:
-        return "W"
+    return "N" if 0 <= degree < 90 else "E" if 90 <= degree < 180 else "S" if 180 <= degree < 270 else "W"
 
 
 def html_header(location_name, viewing_date, plot_file_name, half_dark_hours, summary='false', summary_page_info = ''):
