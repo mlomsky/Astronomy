@@ -273,17 +273,10 @@ class Viewing:
         from_zone = tz.gettz('UTC')
         to_zone = tz.gettz('America/New_York')
         last_alt = 0
-        first = True
         for altaz in sunaltaz:
-            if first:
-                last_alt = altaz.alt
-                first = False
             if altaz.alt.is_within_bounds(0 * u.deg, 1 * u.deg):
-                utc = datetime.strptime(str(altaz.obstime), '%Y-%m-%d %H:%M:%S.%f')
-                utc = utc.replace(tzinfo=from_zone)
+                utc = datetime.strptime(str(altaz.obstime), '%Y-%m-%d %H:%M:%S.%f').replace(tzinfo=from_zone)
                 ny_zone = utc.astimezone(to_zone)
-                ohour = str(ny_zone)[11:13]
-                omin = str(ny_zone)[14:16]
                 time = str(ny_zone)[11:16]
                 date = str(ny_zone)[0:10]
                 if last_alt > altaz.alt:
@@ -292,9 +285,8 @@ class Viewing:
                 else:
                     self.sunrise = time
                     self.date = date
-            if altaz.alt.is_within_bounds(-20 * u.deg, -18 * u.deg):
-                utc = datetime.strptime(str(altaz.obstime), '%Y-%m-%d %H:%M:%S.%f')
-                utc = utc.replace(tzinfo=from_zone)
+            elif altaz.alt.is_within_bounds(-20 * u.deg, -18 * u.deg):
+                utc = datetime.strptime(str(altaz.obstime), '%Y-%m-%d %H:%M:%S.%f').replace(tzinfo=from_zone)
                 ny_zone = utc.astimezone(to_zone)
                 time = str(ny_zone)[11:16]
                 date = str(ny_zone)[0:10]
@@ -312,21 +304,21 @@ class Viewing:
 
         # Create Sun Moon Plot
         sunaltazs_viewing_date = get_sun(self.midnight).transform_to(self.sun_moon_viewing_frame)
-        moon_data = get_moon(self.sun_moon_viewing_times)
-        moonaltazs = moon_data.transform_to(self.sun_moon_viewing_frame)
-        plt.plot(self.sun_moon_delta_midnight, moonaltazs.alt, color=[0.75] * 3, ls='--', label='Moon')
-        plt.plot(self.sun_moon_delta_midnight, sunaltazs_viewing_date.alt, color='r', label='Sun')
+        moonaltazs = get_moon(self.sun_moon_viewing_times).transform_to(self.sun_moon_viewing_frame)
+
+        plt.plot(self.sun_moon_delta_midnight, moonaltazs.alt, '--', color='gray', label='Moon')
+        plt.plot(self.sun_moon_delta_midnight, sunaltazs_viewing_date.alt, color='red', label='Sun')
         plt.fill_between(self.sun_moon_delta_midnight, 0 * u.deg, 90 * u.deg,
-                         sunaltazs_viewing_date.alt < -0 * u.deg, color='0.5', zorder=0)
+                         sunaltazs_viewing_date.alt < -0 * u.deg, color='gray', alpha=0.5, zorder=0)
         plt.fill_between(self.sun_moon_delta_midnight, 0 * u.deg, 90 * u.deg,
-                         sunaltazs_viewing_date.alt < -18 * u.deg, color='k', zorder=0)
+                         sunaltazs_viewing_date.alt < -18 * u.deg, color='black', alpha=0.5, zorder=0)
         plt.legend(loc='upper left')
         plt.xlim(-12 * u.hour, 12 * u.hour)
         plt.xticks((np.arange(13) * 2 - 12) * u.hour)
         plt.ylim(0 * u.deg, 90 * u.deg)
-        plt.xlabel('Hours from Midnight on {0}'.format(self.date))
+        plt.xlabel(f'Hours from Midnight on {self.date}')
         plt.ylabel('Altitude [deg]')
-        plt.title('Sun & Moon Details at {0} with {1}% Moon '.format(self.site_name, self.moon_phase_pct))
+        plt.title(f'Sun & Moon Details at {self.site_name} with {self.moon_phase_pct}% Moon')
         plt.savefig(self.plot_file_name)
         self.get_sunset(sunaltazs_viewing_date)
 
@@ -339,15 +331,12 @@ class Viewing:
         return str(datetime.date(yr, m, d) + datetime.timedelta(1))
 
     def check_sky_tonight(self, obj):
-        # set summary base values for object
-        self.viewing_summary_dictionary[obj]["rise"] = 999  # set rise time to a default num to compare to
-        self.viewing_summary_dictionary[obj]["set"] = 0 # basically same as above
-        self.viewing_summary_dictionary[obj]["max_az"] = 0
+        # Set summary base values for object
+        self.viewing_summary_dictionary[obj] = {"rise": 999, "set": 0, "max_az": 0}
 
         # Move on to the calculation
         if obj in self.planet_list:
-            midnight = Time(self.date + ' 00:00:00')
-            sky_obj = get_body(obj, midnight)
+            sky_obj = get_body(obj, Time(self.date + ' 00:00:00'))
         else:
             sky_obj = SkyCoord.from_name(obj)
         sky_objaltazs_viewing_date = sky_obj.transform_to(self.viewing_frame)
@@ -370,55 +359,31 @@ class Viewing:
             difficulty_html = ''
             if obj not in self.planet_list:
                 object_type = self.my_messier.object_type[obj]
-                finder_link = "<a href=\"https://freestarcharts.com/images/Articles/Messier" \
-                              "/Single/{0}_Finder_Chart.pdf\" target=\"_blank\">Finder Chart</a>".format(obj.upper())
-                if obj in self.my_messier.messier_filters.keys():
-                    suggested_filters = self.my_messier.messier_filters[obj]
-                if obj in self.my_messier.messier_difficulty.keys() and self.my_messier.messier_difficulty[obj] == 'easy':
-                    difficulty_html = '<span class="dotgreen"></span>'
-                elif obj in self.my_messier.messier_difficulty.keys() and self.my_messier.messier_difficulty[obj] == 'medium':
-                    difficulty_html = '<span class="dotorange"></span>'
-                elif obj in self.my_messier.messier_difficulty.keys() and self.my_messier.messier_difficulty[obj] == 'hard':
-                    difficulty_html = '<span class="dotred"></span>'
-                #if self.viewing_summary_dictionary[obj]["rise"] == 999:
-                    #continue
+                finder_link = f'<a href="https://freestarcharts.com/images/Articles/Messier/Single/{obj.upper()}_Finder_Chart.pdf" target="_blank">Finder Chart</a>'
+                suggested_filters = self.my_messier.messier_filters.get(obj, '')
+                difficulty = self.my_messier.messier_difficulty.get(obj, '')
+                difficulty_html = f'<span class="dot{"green" if difficulty == "easy" else "orange" if difficulty == "medium" else "red"}"></span>' if difficulty else ''
 
-            skip_print = True
-            if 0 <= int(omin) < 5:
-                if ohour == last_hour:
-                    skip_print = True
-                else:
-                    skip_print = False
-            else:
-                skip_print = True
+
+            skip_print = not (0 <= int(omin) < 5 and ohour != last_hour)
             last_hour = ohour
             if altitude.is_within_bounds(20 * u.deg, 90 * u.deg) and not skip_print:
                 obs_date, obs_hour = un_utc(odate, ohour)
-                if int(ohour) % 2 == 0:
-                    tr_bgclr = "#d5f5e3"
-                else:
-                    tr_bgclr = "#d6eaf8"
+                tr_bgclr = "#d5f5e3" if int(ohour) % 2 == 0 else "#d6eaf8"
                 compass = return_sector(zstr)
-                direction = str(zstr) + " - {0}".format(compass)
-                table_row = "<tr bgcolor={6}><td>{0}</td><td>{5}</td><td>{1}</td><td>{2}</td><td>{3}&#730;</td>" \
-                            "<td>{4}&#730;</td><td>{8}</td><td>{7}</td></tr>\n" \
-                    .format(obj.upper(), obs_date, obs_hour, d, direction, object_type, tr_bgclr, suggested_filters,
-                            finder_link)
+                direction = f'{zstr} - {compass}'
+                table_row = f'<tr bgcolor="{tr_bgclr}"><td>{obj.upper()}</td><td>{object_type}</td><td>{obs_date}</td><td>{obs_hour}</td><td>{d}&#730;</td><td>{direction}&#730;</td><td>{suggested_filters}</td><td>{finder_link}</td></tr>\n'
                 key = int(omon) * 10000 + int(oday) * 100 + int(ohour)
                 self.viewing_index[self.v_i_ctr] = key
                 self.viewing_dictionary[self.v_i_ctr] = table_row
                 # Set summary info
-                if self.viewing_summary_dictionary[obj]["rise"] == 999:
-                    self.viewing_summary_dictionary[obj]["rise"] = obs_hour
-                    self.viewing_summary_dictionary[obj]["type"] = object_type
-                    self.viewing_summary_dictionary[obj]["date"] = obs_date
-                    self.viewing_summary_dictionary[obj]["filters"] = suggested_filters
-                    self.viewing_summary_dictionary[obj]["link"] = finder_link
-                    self.viewing_summary_dictionary[obj]["difficulty"] = difficulty_html
-                self.viewing_summary_dictionary[obj]["set"] = obs_hour  # set to hour found here as this will be the last
-                if d > self.viewing_summary_dictionary[obj]["max_az"]:
-                    self.viewing_summary_dictionary[obj]["max_az"] = d  # note d is altitude, not sure why i left that
-                    self.viewing_summary_dictionary[obj]["max_az_hr"] = obs_hour
+                summary = self.viewing_summary_dictionary[obj]
+                if summary["rise"] == 999:
+                    summary.update({"rise": obs_hour, "type": object_type, "date": obs_date, "filters": suggested_filters, "link": finder_link, "difficulty": difficulty_html})
+                summary.update({"set": obs_hour})   # set to hour found here as this will be the last
+                if d > summary["max_az"]:
+                    summary.update({"max_az": d, "max_az_hr": obs_hour})  # note d is altitude, not sure why I left that
+                self.viewing_summary_dictionary[obj] = summary
                 # increment Counters
                 self.v_i_ctr += 1
 
