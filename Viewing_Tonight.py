@@ -40,6 +40,7 @@ from collections import defaultdict
 import pdfkit
 import time
 import threading
+import multiprocessing
 
 
 class Mail:  # need to add lots of error checking in the functions here
@@ -358,6 +359,7 @@ class Viewing:
         self.viewing_summary_dictionary[obj] = {"rise": 999, "set": 0, "max_az": 0}
 
         # Move on to the calculation
+        check_time = Timing('check time')
         if obj in self.planet_list:
             sky_obj = get_body(obj, Time(self.date + ' 00:00:00'))
         else:
@@ -370,11 +372,7 @@ class Viewing:
             (sign, d, m, s) = altitude.signed_dms
             (zsign, zd, zm, zs) = altaz.az.signed_dms
             zstr = zsign + zd
-            ohour = str(altaz.obstime)[11:13]
-            omin = str(altaz.obstime)[14:16]
-            odate = str(altaz.obstime)[0:10]
-            oday = str(altaz.obstime)[8:10]
-            omon = str(altaz.obstime)[5:7]
+            ohour, omin, odate, oday, omon = str(altaz.obstime)[11:13], str(altaz.obstime)[14:16], str(altaz.obstime)[0:10], str(altaz.obstime)[8:10], str(altaz.obstime)[5:7]
 
             object_type = 'Planet'
             suggested_filters = ''
@@ -409,6 +407,8 @@ class Viewing:
                 self.viewing_summary_dictionary[obj] = summary
                 # increment Counters
                 self.v_i_ctr += 1
+        check_time.end_now()
+        # check_time.print_delta()
 
     def write_out_html(self):
         with open('astronomy_report.html', 'w') as f:
@@ -574,6 +574,8 @@ def convert_html_to_pdf(html_filename, pdf_filename):
     pdfkit.from_file(html_filename, output_path=pdf_filename, configuration=config, options=options)
 
 
+
+
 def main():
 
     # Maybe add here get sun data and when sun alt < 0 degrees
@@ -589,19 +591,9 @@ def main():
     # Get data for Planets
     print("Working on: ", end='', flush=True)
     planets_time = Timing('Planets Time')
-    # for planet in scan_sky.planet_list:
-    #     print("{0}, ".format(planet), end='', flush=True)
-    #     scan_sky.check_sky_tonight(planet)
-
-    planet_threads = []
-    # for planet in scan_sky.planet_list:
     for planet in scan_sky.planet_list:
-        t = threading.Thread(target=scan_sky.check_sky_tonight, args=(planet,))
-        planet_threads.append(t)
-        t.start()
-
-    for t in planet_threads:
-        t.join()
+         print("{0}, ".format(planet), end='', flush=True)
+         scan_sky.check_sky_tonight(planet)
 
     print(' ')  # output logging cleaner to screen
     planets_time.end_now()
@@ -611,23 +603,18 @@ def main():
     print("Starting Target Group ", flush=True)
     viewing_targets = Targets()
     targets_time = Timing('Targets Time')
-    short_run = True
+    short_run = False
     if 'target_group' in viewing_targets.data:
         if viewing_targets.data["target_group"] == "messier":
-            #print("Working on: ", end='', flush=True)
-            threads = []
+            print("Working on: ", end='', flush=True)
             for m_num in range(1, scan_sky.messier_max):
                 m_id = "m" + str(m_num)
-                # print("{0}, ".format(m_id), end='', flush=True)
-                # scan_sky.check_sky_tonight(m_id)
-                t = threading.Thread(target=scan_sky.check_sky_tonight, args=(m_id,))
-                threads.append(t)
-                t.start()
+                if m_num % 10 == 0:
+                    print("{0}, ".format(m_id), end='', flush=True)
+                scan_sky.check_sky_tonight(m_id)
                 if m_num > 3 and short_run == True:
                      break
                 #sys.exit()
-            for t in threads:
-                t.join()
             print("Finished with Messier", flush=True)
     targets_time.end_now()
     targets_time.print_delta()
