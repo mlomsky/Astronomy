@@ -33,7 +33,7 @@ import datetime
 from astropy.visualization import astropy_mpl_style, quantity_support
 import matplotlib.pyplot as plt
 from astropy.coordinates import get_sun
-from astropy.coordinates import get_moon
+from astropy.coordinates import get_body
 from PyAstronomy import pyasl # Using this to get Lunar Phase
 from Messier import Messier
 from collections import defaultdict
@@ -327,7 +327,7 @@ class Viewing:
 
         # Create Sun Moon Plot
         sunaltazs_viewing_date = get_sun(self.midnight).transform_to(self.sun_moon_viewing_frame)
-        moonaltazs = get_moon(self.sun_moon_viewing_times).transform_to(self.sun_moon_viewing_frame)
+        moonaltazs = get_body("moon", self.sun_moon_viewing_times).transform_to(self.sun_moon_viewing_frame)
 
         plt.plot(self.sun_moon_delta_midnight, moonaltazs.alt, '--', color='gray', label='Moon')
         plt.plot(self.sun_moon_delta_midnight, sunaltazs_viewing_date.alt, color='red', label='Sun')
