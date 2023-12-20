@@ -38,6 +38,8 @@ from PyAstronomy import pyasl # Using this to get Lunar Phase
 from Messier import Messier
 from collections import defaultdict
 import pdfkit
+import time
+import threading
 
 
 class Mail:  # need to add lots of error checking in the functions here
@@ -116,7 +118,7 @@ class Location:
     def __init__(self):
         self.verify_json_exists()
         self.load_json()
-        print("Running for " + self.data["name"] + " on " + self.data["viewing_date"])
+        print("\n\nRunning for " + self.data["name"] + " on " + self.data["viewing_date"])
 
     def verify_json_exists(self):
         if not os.path.isfile(self.json_file_name):
@@ -145,21 +147,42 @@ class Targets:
             self.data = json.load(loc_json_file)
 
 
+class Timing:
+    start_time = time.time()
+    end_time = time.time()
+    elapsed_time = ''
+
+    def __init__(self, label):
+        self.start_time = time.time()
+        self.label = label
+
+    def end_now(self):
+        self.end_time = time.time()
+        self.elapsed_time = self.end_time - self.start_time
+
+    def print_delta(self):
+        print(f"{self.label} Elapsed time: {self.elapsed_time:.2f} seconds")
+
+
 class Viewing:
     messier_max = 110
     planet_list = ['mercury', 'venus', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune']
     viewing_arr = []
 
-    def __init__(self, lat, long, date, name, height):
-        self.lat = lat
-        self.long = long
+    def __init__(self):
+        # Load JSON data
+        viewing_location = Location()
+        date = viewing_location.data["viewing_date"]
+
+        self.lat = viewing_location.data["lat"]
+        self.long = viewing_location.data["long"]
         self.date = self.fix_date(date)
         self.file_date = date
         self.moon_phase_pct = get_lunar_phase(self.date)
         self.viewing_date_evening = str(datetime.date(int(date[0:4]), int(date[5:7]), int(date[8:10])))
-        self.site_name = name
+        self.site_name = viewing_location.data["name"]
         self.site_file_name = self.site_name.replace(' ', '-')
-        self.height = height
+        self.height = viewing_location.data["height"]
         self.viewing_location = EarthLocation(lat=self.lat * u.deg, lon=self.long * u.deg, height=self.height * u.m)
         self.utcoffset_int = -4  # need to make this loadable from the viewing location
         self.utcoffset = self.utcoffset_int * u.hour  # Eastern Daylight Time
@@ -523,12 +546,10 @@ def header_row():
 
 
 def get_lunar_phase(lunar_date):
-    yr = int(lunar_date[0:4])
-    m = int(lunar_date[5:7])
-    d = int(lunar_date[8:10])
+    yr, m, d = map(int, lunar_date.split('-'))
     new_date = datetime.datetime(yr, m, d)
-    ph = pyasl.jdcnv(new_date)
-    return int(pyasl.moonphase(ph) * 100)  # moon phase returns a float between 0 and 1
+    ph = int(pyasl.jdcnv(new_date))
+    return int((pyasl.moonphase(ph) * 100)[0]) # moon phase returns a float between 0 and 1
 #  pyasl.jdconv converts the date to the date format that moonphase needs to use
 
 
@@ -554,16 +575,12 @@ def convert_html_to_pdf(html_filename, pdf_filename):
 
 
 def main():
-    # Load JSON data
-    viewing_location = Location()
-    viewing_targets = Targets()
 
     # Maybe add here get sun data and when sun alt < 0 degrees
     # use that to limit check sky to only those dark hours and mark twilight hours
     # to viewing program
-    scan_sky = Viewing(viewing_location.data["lat"], viewing_location.data["long"],
-                       viewing_location.data["viewing_date"], viewing_location.data["name"],
-                       viewing_location.data["height"])
+    main_time = Timing('Main Time')
+    scan_sky = Viewing()
     # Plot Sun and Moon
     print("Plotting Sun and Moon")
     filename = scan_sky.site_name.replace(' ', '-')
@@ -571,34 +588,63 @@ def main():
     scan_sky.adjust_delta_midnight()
     # Get data for Planets
     print("Working on: ", end='', flush=True)
+    planets_time = Timing('Planets Time')
+    # for planet in scan_sky.planet_list:
+    #     print("{0}, ".format(planet), end='', flush=True)
+    #     scan_sky.check_sky_tonight(planet)
+
+    planet_threads = []
+    # for planet in scan_sky.planet_list:
     for planet in scan_sky.planet_list:
-        print("{0}, ".format(planet), end='', flush=True)
-        scan_sky.check_sky_tonight(planet)
-    print(" ")
+        t = threading.Thread(target=scan_sky.check_sky_tonight, args=(planet,))
+        planet_threads.append(t)
+        t.start()
+
+    for t in planet_threads:
+        t.join()
+
+    print(' ')  # output logging cleaner to screen
+    planets_time.end_now()
+    planets_time.print_delta()
+
     # Get data for Target group
+    print("Starting Target Group ", flush=True)
+    viewing_targets = Targets()
+    targets_time = Timing('Targets Time')
+    short_run = True
     if 'target_group' in viewing_targets.data:
         if viewing_targets.data["target_group"] == "messier":
-            print("Working on: ", end='', flush=True)
+            #print("Working on: ", end='', flush=True)
+            threads = []
             for m_num in range(1, scan_sky.messier_max):
                 m_id = "m" + str(m_num)
-                print("{0}, ".format(m_id), end='', flush=True)
-                scan_sky.check_sky_tonight(m_id)
-                #if m_num > 3:
-                     #break
-                    #pass
-                #   sys.exit()
-            print("Finished with Messier")
+                # print("{0}, ".format(m_id), end='', flush=True)
+                # scan_sky.check_sky_tonight(m_id)
+                t = threading.Thread(target=scan_sky.check_sky_tonight, args=(m_id,))
+                threads.append(t)
+                t.start()
+                if m_num > 3 and short_run == True:
+                     break
+                #sys.exit()
+            for t in threads:
+                t.join()
+            print("Finished with Messier", flush=True)
+    targets_time.end_now()
+    targets_time.print_delta()
+
     # Sort The found data
-    print("Sorting The Data")
+    print("Sorting The Data", flush=True)
     scan_sky.sort_data()
     scan_sky.set_html()
+
     # Print out Results
-    print("Printing Out Results")
+    print("Printing Out Results", flush=True)
     scan_sky.write_out_html()
     scan_sky.make_summary_html()
     scan_sky.write_out_summary_html()
+
     # Convert Summary HTML to pdf
-    print("Making PDF")
+    print("Making PDF", flush=True)
     convert_html_to_pdf(scan_sky.summary_filename, scan_sky.summary_pdf_filename)
     # Send email if the mail JSON file is present
     #print("Sending Email")
@@ -608,6 +654,8 @@ def main():
     # need to check API for caldwell list objects and other lists
     # for dso in viewing_targets.data["target_list"]:
     # scan_sky.check_sky_tonight(dso)
+    main_time.end_now()
+    main_time.print_delta()
 
 
 if __name__ == '__main__':
