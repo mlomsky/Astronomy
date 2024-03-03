@@ -45,8 +45,17 @@ Any item with an X means I changed my mind on that enhancement, and the check, o
    * https://wkhtmltopdf.org/usage/wkhtmltopdf.txt
 * :heavy_check_mark: add section with definition of my terms at the bottom of the page
 #### Upgrade 9
-* add a difficulty scale column (easy/medium/hard) via images green/amber/red
-* add max altitude time
+* :heavy_check_mark: add a difficulty scale column (easy/medium/hard) via images green/amber/red
+* :heavy_check_mark: add max altitude time
+#### Upgrade 10
+* add site name for location save
+* load last save location, and show it
+* auto fill in current date
+* auto fill in current time
+#### Upgrade 11
+* take local name and find geo coords and save
+* make dialog for save locations
+* show current status in new pop up
 ## Brainstorming
 * accuweather has lots of info
     * https://developer.accuweather.com/apis
