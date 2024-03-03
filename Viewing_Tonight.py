@@ -41,6 +41,7 @@ import pdfkit
 import time
 import threading
 import multiprocessing
+import PySimpleGUI as sg
 
 
 class Mail:  # need to add lots of error checking in the functions here
@@ -578,71 +579,92 @@ def convert_html_to_pdf(html_filename, pdf_filename):
 
 def main():
 
-    # Maybe add here get sun data and when sun alt < 0 degrees
-    # use that to limit check sky to only those dark hours and mark twilight hours
-    # to viewing program
-    main_time = Timing('Main Time')
-    scan_sky = Viewing()
-    # Plot Sun and Moon
-    print("Plotting Sun and Moon")
-    filename = scan_sky.site_name.replace(' ', '-')
-    scan_sky.plot_sun_moon()
-    scan_sky.adjust_delta_midnight()
-    # Get data for Planets
-    print("Working on: ", end='', flush=True)
-    planets_time = Timing('Planets Time')
-    for planet in scan_sky.planet_list:
-         print("{0}, ".format(planet), end='', flush=True)
-         scan_sky.check_sky_tonight(planet)
+    # Set up the window
+    sg.theme('DarkBlue')
+    location_text = 'Enter Location Address, City, State: '
+    date_text = 'Enter Date: '
+    time_text = 'Enter Time: '
+    layout = [
+        [sg.Text(location_text), sg.Input(key='-INPUTLOC-')],
+        [sg.Text(date_text), sg.Input(key='-INPUTDATE-')],
+        [sg.Text(time_text), sg.Input(key='-INPUTTIME-')],
+        [sg.Button('Save Location'), sg.Button('Generate PDF and HTML')],
+        [sg.Button('Close')]
+        ]
+    
+    window = sg.Window('Viewing Tonight', layout)
 
-    print(' ')  # output logging cleaner to screen
-    planets_time.end_now()
-    planets_time.print_delta()
+    while True:
+        event, values = window.read()
+        if event == sg.WIN_CLOSED or event == 'Close':
+            break
 
-    # Get data for Target group
-    print("Starting Target Group ", flush=True)
-    viewing_targets = Targets()
-    targets_time = Timing('Targets Time')
-    short_run = False
-    if 'target_group' in viewing_targets.data:
-        if viewing_targets.data["target_group"] == "messier":
+        if event == 'Generate PDF and HTML':
+            # Maybe add here get sun data and when sun alt < 0 degrees
+            # use that to limit check sky to only those dark hours and mark twilight hours
+            # to viewing program
+            main_time = Timing('Main Time')
+            scan_sky = Viewing()
+            # Plot Sun and Moon
+            print("Plotting Sun and Moon")
+            filename = scan_sky.site_name.replace(' ', '-')
+            scan_sky.plot_sun_moon()
+            scan_sky.adjust_delta_midnight()
+            # Get data for Planets
             print("Working on: ", end='', flush=True)
-            for m_num in range(1, scan_sky.messier_max):
-                m_id = "m" + str(m_num)
-                if m_num % 10 == 0:
-                    print("{0}, ".format(m_id), end='', flush=True)
-                scan_sky.check_sky_tonight(m_id)
-                if m_num > 3 and short_run == True:
-                     break
-                #sys.exit()
-            print("Finished with Messier", flush=True)
-    targets_time.end_now()
-    targets_time.print_delta()
+            planets_time = Timing('Planets Time')
+            for planet in scan_sky.planet_list:
+                print("{0}, ".format(planet), end='', flush=True)
+                scan_sky.check_sky_tonight(planet)
 
-    # Sort The found data
-    print("Sorting The Data", flush=True)
-    scan_sky.sort_data()
-    scan_sky.set_html()
+            print(' ')  # output logging cleaner to screen
+            planets_time.end_now()
+            planets_time.print_delta()
 
-    # Print out Results
-    print("Printing Out Results", flush=True)
-    scan_sky.write_out_html()
-    scan_sky.make_summary_html()
-    scan_sky.write_out_summary_html()
+            # Get data for Target group
+            print("Starting Target Group ", flush=True)
+            viewing_targets = Targets()
+            targets_time = Timing('Targets Time')
+            short_run = False
+            if 'target_group' in viewing_targets.data:
+                if viewing_targets.data["target_group"] == "messier":
+                    print("Working on: ", end='', flush=True)
+                    for m_num in range(1, scan_sky.messier_max):
+                        m_id = "m" + str(m_num)
+                        if m_num % 10 == 0:
+                            print("{0}, ".format(m_id), end='', flush=True)
+                        scan_sky.check_sky_tonight(m_id)
+                        if m_num > 3 and short_run == True:
+                            break
+                        #sys.exit()
+                    print("Finished with Messier", flush=True)
+            targets_time.end_now()
+            targets_time.print_delta()
 
-    # Convert Summary HTML to pdf
-    print("Making PDF", flush=True)
-    convert_html_to_pdf(scan_sky.summary_filename, scan_sky.summary_pdf_filename)
-    # Send email if the mail JSON file is present
-    #print("Sending Email")
-    #email = Mail(scan_sky.plot_file_name)
-    # if email.mail_exists:
-    # email.send_email(scan_sky.html, "see html version")
-    # need to check API for caldwell list objects and other lists
-    # for dso in viewing_targets.data["target_list"]:
-    # scan_sky.check_sky_tonight(dso)
-    main_time.end_now()
-    main_time.print_delta()
+            # Sort The found data
+            print("Sorting The Data", flush=True)
+            scan_sky.sort_data()
+            scan_sky.set_html()
+
+            # Print out Results
+            print("Printing Out Results", flush=True)
+            scan_sky.write_out_html()
+            scan_sky.make_summary_html()
+            scan_sky.write_out_summary_html()
+
+            # Convert Summary HTML to pdf
+            print("Making PDF", flush=True)
+            convert_html_to_pdf(scan_sky.summary_filename, scan_sky.summary_pdf_filename)
+            # Send email if the mail JSON file is present
+            #print("Sending Email")
+            #email = Mail(scan_sky.plot_file_name)
+            # if email.mail_exists:
+            # email.send_email(scan_sky.html, "see html version")
+            # need to check API for caldwell list objects and other lists
+            # for dso in viewing_targets.data["target_list"]:
+            # scan_sky.check_sky_tonight(dso)
+            main_time.end_now()
+            main_time.print_delta()
 
 
 if __name__ == '__main__':
