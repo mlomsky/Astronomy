@@ -589,17 +589,17 @@ def main():
         [sg.Text(date_text), sg.Input(key='-INPUTDATE-')],
         [sg.Text(time_text), sg.Input(key='-INPUTTIME-')],
         [sg.Button('Save Location'), sg.Button('Generate PDF and HTML')],
+        [sg.Text('Working on:'), sg.Text('Not Started', key='-TEXTSTATUS-', text_color='red', visible=False)],
         [sg.Button('Close')]
         ]
     
-    window = sg.Window('Viewing Tonight', layout)
+    window = sg.Window('Viewing Tonight', layout, finalize=True)
 
     while True:
         event, values = window.read()
         if event == sg.WIN_CLOSED or event == 'Close':
             break
-
-        if event == 'Generate PDF and HTML':
+        elif event == 'Generate PDF and HTML':
             # Maybe add here get sun data and when sun alt < 0 degrees
             # use that to limit check sky to only those dark hours and mark twilight hours
             # to viewing program
@@ -613,13 +613,22 @@ def main():
             # Get data for Planets
             print("Working on: ", end='', flush=True)
             planets_time = Timing('Planets Time')
+
+
+            window['-TEXTSTATUS-'].update(visible=True)
             for planet in scan_sky.planet_list:
+                #window['-TEXTSTATUS-'].update(planet, text_color='green')
+                window['-TEXTSTATUS-'].update(planet)
+                window.refresh()
                 print("{0}, ".format(planet), end='', flush=True)
                 scan_sky.check_sky_tonight(planet)
 
             print(' ')  # output logging cleaner to screen
             planets_time.end_now()
             planets_time.print_delta()
+            
+
+       
 
             # Get data for Target group
             print("Starting Target Group ", flush=True)
@@ -633,6 +642,8 @@ def main():
                         m_id = "m" + str(m_num)
                         if m_num % 10 == 0:
                             print("{0}, ".format(m_id), end='', flush=True)
+                            window['-TEXTSTATUS-'].update(f'Messier {m_id}')
+                            window.refresh()
                         scan_sky.check_sky_tonight(m_id)
                         if m_num > 3 and short_run == True:
                             break

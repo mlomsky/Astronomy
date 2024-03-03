@@ -55,7 +55,9 @@ Any item with an X means I changed my mind on that enhancement, and the check, o
 #### Upgrade 11
 * take local name and find geo coords and save
 * make dialog for save locations
-* show current status in new pop up
+* :heavy_check_mark: show current status in new pop up
+    * changed to just adding a text field in the main pop-up to show it
+    * after playing with it, I like this better
 ## Brainstorming
 * accuweather has lots of info
     * https://developer.accuweather.com/apis
