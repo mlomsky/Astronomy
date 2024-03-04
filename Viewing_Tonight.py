@@ -42,6 +42,9 @@ import time
 import threading
 import multiprocessing
 import PySimpleGUI as sg
+from geopy.geocoders import Nominatim
+import requests
+import pandas as pd
 
 
 class Mail:  # need to add lots of error checking in the functions here
@@ -132,6 +135,91 @@ class Location:
             self.data = json.load(loc_json_file)
 
 
+class UserDataApp:
+    def __init__(self):
+        sg.theme('dark grey 9')
+        self.layout = [
+            [sg.Text('Name:'), sg.Input(key='name')],
+            [sg.Text('Address:'), sg.Input(key='address')],
+            [sg.Text('City:'), sg.Input(key='city')],
+            [sg.Text('State:'), sg.Input(key='state')],
+            [sg.Button('Save Location'), sg.Button('Load Location'), sg.Button('Exit')]
+        ]
+        self.window = sg.Window('User Information', self.layout)
+        self.folder_path = 'user_data_folder'  # Subfolder name
+        self.geolocator = Nominatim(user_agent='user_data_app')
+        self.user_data = {}
+
+    def create_subfolder(self):
+        if not os.path.exists(self.folder_path):
+            os.makedirs(self.folder_path)
+
+    def get_coordinates(self, address):
+        location = self.geolocator.geocode(address)
+        if location:
+            return location.latitude, location.longitude
+        else:
+            return None, None
+
+    def read_json_data(self):
+        # please note I know I am recaculating the lat and long here, but I am doing it in case the data changes. 
+        # this may be dumb, but I am tired and it makes sense to me right now.
+        # suspect I will chnage this later
+        filenames = os.listdir(self.folder_path)
+        if filenames:
+            selected_file = sg.popup_get_file('Choose a file to read data', file_types=(("JSON Files", "*.json"),), initial_folder=self.folder_path)
+            if selected_file:
+                try:
+                    with open(selected_file, 'r') as json_file:
+                        self.user_data = json.load(json_file)
+                        self.window['name'].update(self.user_data.get('name', ''))
+                        self.window['address'].update(self.user_data.get('address', ''))
+                        self.window['city'].update(self.user_data.get('city', ''))
+                        self.window['state'].update(self.user_data.get('state', ''))
+                        geo_locate = self.user_data['address'] + ', ' + self.user_data['city'] + ', ' + self.user_data['state']
+                        lat, lon = self.get_coordinates(geo_locate) # these next 3 lines should be cleaned up... tired now later...
+                        self.user_data['latitude'] = lat
+                        self.user_data['longitude'] = lon
+                        sg.popup(f'Data loaded successfully!  Lat:{lat} long:{lon}', title='Success')
+                except FileNotFoundError:
+                    sg.popup_error(f'Error reading data from {selected_file}', title='Error')
+        else:
+            sg.popup_error('No existing JSON files found in the subfolder!', title='Error')
+
+    def run(self):
+        self.create_subfolder()
+        while True:
+            event, values = self.window.read()
+            if event == sg.WINDOW_CLOSED or event == 'Exit':
+                break
+            elif event == 'Save Location':
+                filename = sg.popup_get_file('Choose a file to save data', save_as=True, initial_folder=self.folder_path)
+                if filename:
+                    # Collect user input
+                    self.user_data = {
+                        'name': values['name'],
+                        'address': values['address'],
+                        'city': values['city'],
+                        'state': values['state'],
+                        'latitude': '',
+                        'longitude': ''
+                    }
+                    geo_locate = self.user_data['address'] + ', ' + self.user_data['city'] + ', ' + self.user_data['state']
+                    lat, lon = self.get_coordinates(geo_locate) # again need to clean up the next 3 lines but want to finish my idea first
+                    self.user_data['latitude'] = lat
+                    self.user_data['longitude'] = lon
+                    # Write data to a JSON file
+                    with open(filename, 'w') as json_file:
+                        json.dump(self.user_data, json_file, indent=4)
+
+                        sg.popup(f'Data saved successfully in {filename}!', title='Success')
+            elif event == 'Load Location':
+                self.read_json_data()
+
+        self.window.close()
+        
+
+
 class Targets:
     data = {}
     json_file_name = 'viewing_targets.json'
@@ -171,20 +259,20 @@ class Viewing:
     planet_list = ['mercury', 'venus', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune']
     viewing_arr = []
 
-    def __init__(self):
+    def __init__(self, location_lat, location_long, location_name):
         # Load JSON data
         viewing_location = Location()
         date = viewing_location.data["viewing_date"]
 
-        self.lat = viewing_location.data["lat"]
-        self.long = viewing_location.data["long"]
+        self.lat = location_lat
+        self.long = location_long
         self.date = self.fix_date(date)
         self.file_date = date
         self.moon_phase_pct = get_lunar_phase(self.date)
         self.viewing_date_evening = str(datetime.date(int(date[0:4]), int(date[5:7]), int(date[8:10])))
-        self.site_name = viewing_location.data["name"]
+        self.site_name = location_name
         self.site_file_name = self.site_name.replace(' ', '-')
-        self.height = viewing_location.data["height"]
+        self.height = get_elevation_in_feet(location_lat, location_long)
         self.viewing_location = EarthLocation(lat=self.lat * u.deg, lon=self.long * u.deg, height=self.height * u.m)
         self.utcoffset_int = -4  # need to make this loadable from the viewing location
         self.utcoffset = self.utcoffset_int * u.hour  # Eastern Daylight Time
@@ -575,16 +663,12 @@ def convert_html_to_pdf(html_filename, pdf_filename):
     pdfkit.from_file(html_filename, output_path=pdf_filename, configuration=config, options=options)
 
 
-
-
-def main():
-
-    # Set up the window
-    sg.theme('DarkBlue')
+def set_main_layout():
     location_text = 'Enter Location Address, City, State: '
     date_text = 'Enter Date: '
     time_text = 'Enter Time: '
     layout = [
+        [sg.Button('Load or Save a Location for Reuse')],
         [sg.Text(location_text), sg.Input(key='-INPUTLOC-')],
         [sg.Text(date_text), sg.Input(key='-INPUTDATE-')],
         [sg.Text(time_text), sg.Input(key='-INPUTTIME-')],
@@ -592,19 +676,36 @@ def main():
         [sg.Text('Working on:'), sg.Text('Not Started', key='-TEXTSTATUS-', text_color='red', visible=False)],
         [sg.Button('Close')]
         ]
-    
+    return layout
+
+def get_elevation_in_feet(lat, long):
+    query = f'https://api.open-elevation.com/api/v1/lookup?locations={lat},{long}'
+    r = requests.get(query).json()
+    elevation_meters = r['results'][0]['elevation']
+    elevation_feet = elevation_meters * 3.28084
+    rounded_elevation_feet = round(elevation_feet)
+    return rounded_elevation_feet
+
+def main():
+
+    # Set up the window
+    sg.theme('DarkBlue')
+    layout = set_main_layout()
     window = sg.Window('Viewing Tonight', layout, finalize=True)
 
     while True:
         event, values = window.read()
         if event == sg.WIN_CLOSED or event == 'Close':
             break
+        elif event == 'Load or Save a Location for Reuse':
+            location_data= UserDataApp()
+            location_data.run()
         elif event == 'Generate PDF and HTML':
             # Maybe add here get sun data and when sun alt < 0 degrees
             # use that to limit check sky to only those dark hours and mark twilight hours
             # to viewing program
             main_time = Timing('Main Time')
-            scan_sky = Viewing()
+            scan_sky = Viewing(location_data.user_data['latitude'], location_data.user_data['longitude'], location_data.user_data['name'])
             # Plot Sun and Moon
             print("Plotting Sun and Moon")
             filename = scan_sky.site_name.replace(' ', '-')
@@ -617,8 +718,7 @@ def main():
 
             window['-TEXTSTATUS-'].update(visible=True)
             for planet in scan_sky.planet_list:
-                #window['-TEXTSTATUS-'].update(planet, text_color='green')
-                window['-TEXTSTATUS-'].update(planet)
+                window['-TEXTSTATUS-'].update(planet, text_color='green')
                 window.refresh()
                 print("{0}, ".format(planet), end='', flush=True)
                 scan_sky.check_sky_tonight(planet)

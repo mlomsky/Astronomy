@@ -48,8 +48,8 @@ Any item with an X means I changed my mind on that enhancement, and the check, o
 * :heavy_check_mark: add a difficulty scale column (easy/medium/hard) via images green/amber/red
 * :heavy_check_mark: add max altitude time
 #### Upgrade 10
-* add site name for location save
-* load last save location, and show it
+* :heavy_check_mark: add site name for location save
+* :heavy_check_mark: load last save location, and show it
 * auto fill in current date
 * auto fill in current time
 #### Upgrade 11
