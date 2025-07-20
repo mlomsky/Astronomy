@@ -5,6 +5,7 @@ test_group.py
 *.pdf
 *.html
 astronomy_report.html
+user_data_folder/
 
 venv/Lib/site-packages/easy-install.pth
 venv/Lib/site-packages/pip-19.0.3-py3.7.egg/EGG-INFO/dependency_links.txt
