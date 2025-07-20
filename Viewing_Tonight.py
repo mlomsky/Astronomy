@@ -272,17 +272,13 @@ class Viewing:
     planet_list = ['mercury', 'venus', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune']
     viewing_arr = []
 
-    def __init__(self, location_lat, location_long, location_name):
-        # Load JSON data
-        viewing_location = Location()
-        date = viewing_location.data["viewing_date"]
-
+    def __init__(self, location_lat, location_long, location_name, viewing_date):
         self.lat = location_lat
         self.long = location_long
-        self.date = self.fix_date(date)
-        self.file_date = date
+        self.date = self.fix_date(viewing_date)
+        self.file_date = viewing_date
         self.moon_phase_pct = get_lunar_phase(self.date)
-        self.viewing_date_evening = str(datetime.date(int(date[0:4]), int(date[5:7]), int(date[8:10])))
+        self.viewing_date_evening = str(datetime.date(int(viewing_date[0:4]), int(viewing_date[5:7]), int(viewing_date[8:10])))
         self.site_name = location_name
         self.site_file_name = self.site_name.replace(' ', '-')
         self.height = get_elevation_in_feet(location_lat, location_long)
@@ -689,6 +685,7 @@ class MainApp:
         self.root = root
         root.title("Viewing Tonight")
         self.location_data = None
+        self.geolocator = Nominatim(user_agent='mainapp_viewer')
 
         # Layout setup
         self.location_name_entry = self._add_row("Enter Location Name:", row=0)
@@ -713,6 +710,10 @@ class MainApp:
         entry = tk.Entry(self.root, width=50)
         entry.grid(row=row, column=1, padx=5, pady=2)
         return entry
+
+    def get_coordinates(self, address):
+        location = self.geolocator.geocode(address)
+        return (location.latitude, location.longitude) if location else (None, None)
 
     def load_or_save(self):
         # Create a callback function to update the location entry
@@ -739,6 +740,7 @@ class MainApp:
     def generate_output(self):
         date_value = self.date_entry.get()
         location_value = self.location_entry.get()
+        location_name_value = self.location_name_entry.get()
 
         if not date_value or not location_value:
             messagebox.showerror("Missing Input", "Please enter both date and location.")
@@ -746,21 +748,20 @@ class MainApp:
 
         print(f"Date: {date_value}, Location: {location_value}")
 
-        if not self.location_data or not hasattr(self.location_data, 'user_data' and not date_value):
-            messagebox.showerror("Error", "Load or save a location first.")
+        # Convert location address to coordinates
+        lat, lon = self.get_coordinates(location_value)
+        if lat is None or lon is None:
+            messagebox.showerror("Error", f"Could not find coordinates for location: {location_value}")
             return
 
-        if not self.location_data or not hasattr(self.location_data, 'user_data' and not date_value):
-            messagebox.showerror("Error", "Load or save a location first.")
-            return
+        # Use location name from entry field if provided, otherwise use location address
+        location_name = location_name_value if location_name_value else location_value
 
         self.status_label.config(text="Generating…", fg="blue")
         self.root.update_idletasks()
 
- 
         main_time = Timing('Main Time')
-        ld = self.location_data.user_data
-        scan_sky = Viewing(ld['latitude'], ld['longitude'], ld['name'])
+        scan_sky = Viewing(lat, lon, location_name, date_value)
 
         # Plot assets…
         scan_sky.plot_sun_moon()
