@@ -145,12 +145,15 @@ class UserDataAppTkinter:
         self.location_entry_callback = location_entry_callback
         self.location_name_callback = location_name_callback
 
+        # Font configuration
+        self.font_config = ("Arial", 12)
+
         # Labels and Entries
         self.entries = {}
         for idx, field in enumerate(['Name', 'Address', 'City', 'State']):
-            label = tk.Label(root, text=field + ":")
+            label = tk.Label(root, text=field + ":", font=self.font_config)
             label.grid(row=idx, column=0, padx=10, pady=5, sticky='e')
-            entry = tk.Entry(root, width=40)
+            entry = tk.Entry(root, width=40, font=self.font_config)
             entry.grid(row=idx, column=1, padx=10, pady=5)
             self.entries[field.lower()] = entry
 
@@ -158,9 +161,9 @@ class UserDataAppTkinter:
         button_frame = tk.Frame(root)
         button_frame.grid(row=5, column=0, columnspan=2, pady=10)
 
-        tk.Button(button_frame, text="Save Location", command=self.save_location).pack(side='left', padx=5)
-        tk.Button(button_frame, text="Load Location", command=self.load_location).pack(side='left', padx=5)
-        tk.Button(button_frame, text="Exit", command=self.root.destroy).pack(side='left', padx=5)
+        tk.Button(button_frame, text="Save Location", command=self.save_location, font=self.font_config).pack(side='left', padx=5)
+        tk.Button(button_frame, text="Load Location", command=self.load_location, font=self.font_config).pack(side='left', padx=5)
+        tk.Button(button_frame, text="Exit", command=self.root.destroy, font=self.font_config).pack(side='left', padx=5)
 
         self.create_subfolder()
   
@@ -685,6 +688,9 @@ class MainApp:
         self.location_data = None
         self.geolocator = Nominatim(user_agent='mainapp_viewer')
 
+        # Font configuration
+        self.font_config = ("Arial", 12)
+
         # Layout setup
         self.location_name_entry = self._add_row("Enter Location Name:", row=0)
         self.location_entry = self._add_row("Enter Location (Address, City, State):", row=1)
@@ -694,22 +700,22 @@ class MainApp:
         today = datetime.date.today().strftime('%Y-%m-%d')
         self.date_entry.insert(0, today)
 
-        tk.Button(root, text="Load or Save a Location for Reuse", command=self.load_or_save)\
+        tk.Button(root, text="Load or Save a Location for Reuse", command=self.load_or_save, font=self.font_config)\
             .grid(row=4, column=0, columnspan=2, pady=5)
-        tk.Button(root, text="Save Location", command=self.save_location)\
+        tk.Button(root, text="Save Location", command=self.save_location, font=self.font_config)\
             .grid(row=5, column=0, pady=5)
-        tk.Button(root, text="Generate PDF and HTML", command=self.generate_output)\
+        tk.Button(root, text="Generate PDF and HTML", command=self.generate_output, font=self.font_config)\
             .grid(row=5, column=1, pady=5)
 
-        tk.Button(root, text="Close", command=root.quit)\
+        tk.Button(root, text="Close", command=root.quit, font=self.font_config)\
             .grid(row=7, column=0, columnspan=2, pady=10)
 
-        self.status_label = tk.Label(root, text="Not Started", fg="red", width=50)
+        self.status_label = tk.Label(root, text="Not Started", fg="red", width=50, font=self.font_config)
         self.status_label.grid(row=6, column=0, columnspan=2)
 
     def _add_row(self, label_text, row):
-        tk.Label(self.root, text=label_text).grid(row=row, column=0, padx=5, sticky='e')
-        entry = tk.Entry(self.root, width=50)
+        tk.Label(self.root, text=label_text, font=self.font_config).grid(row=row, column=0, padx=5, sticky='e')
+        entry = tk.Entry(self.root, width=50, font=self.font_config)
         entry.grid(row=row, column=1, padx=5, pady=2)
         return entry
 
