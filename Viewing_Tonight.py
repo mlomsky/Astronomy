@@ -136,12 +136,13 @@ class Location:
             self.data = json.load(loc_json_file)
 
 class UserDataAppTkinter:
-    def __init__(self, root):
+    def __init__(self, root, location_entry_callback=None):
         self.root = root
         self.root.title("User Information")
         self.folder_path = 'user_data_folder'
         self.geolocator = Nominatim(user_agent='user_data_app')
         self.user_data = {}
+        self.location_entry_callback = location_entry_callback
 
         # Labels and Entries
         self.entries = {}
@@ -188,6 +189,10 @@ class UserDataAppTkinter:
             with open(filename, 'w') as json_file:
                 json.dump(self.user_data, json_file, indent=4)
             messagebox.showinfo("Success", f"Data saved successfully in:\n{filename}\nLat: {lat}, Lon: {lon}")
+            
+            # Update the main app's location entry if callback is provided
+            if self.location_entry_callback:
+                self.location_entry_callback(full_address)
 
     def load_location(self):
         if not os.listdir(self.folder_path):
@@ -211,6 +216,10 @@ class UserDataAppTkinter:
                     self.user_data['longitude'] = lon
 
                     messagebox.showinfo("Success", f"Data loaded for {name}\nLat: {lat}, Lon: {lon}")
+                    
+                    # Update the main app's location entry if callback is provided
+                    if self.location_entry_callback:
+                        self.location_entry_callback(full_address)
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to read the file:\n{e}")        
 
@@ -660,9 +669,6 @@ def convert_html_to_pdf(html_filename, pdf_filename):
 
 
 
-# --- Your existing imports ---
-# from your_module import UserDataApp, Timing, Viewing, Targets, convert_html_to_pdf
-
 def get_elevation_in_feet(lat, long):
     query = f'https://api.open-elevation.com/api/v1/lookup?locations={lat},{long}'
     r = requests.get(query).json()
@@ -699,9 +705,14 @@ class MainApp:
         return entry
 
     def load_or_save(self):
+        # Create a callback function to update the location entry
+        def update_location_entry(full_address):
+            self.location_entry.delete(0, tk.END)
+            self.location_entry.insert(0, full_address)
 
-        self.location_data = UserDataAppTkinter(tk.Toplevel(self.root))
-        self.location_data.run()
+        self.location_data = UserDataAppTkinter(tk.Toplevel(self.root), location_entry_callback=update_location_entry)
+        # self.location_entry.insert(0,self.location_data.user_data.get('address'))
+
 
     def save_location(self):
         # Insert logic here if extracting date/time from fields is needed
@@ -709,7 +720,20 @@ class MainApp:
         self.status_label.config(text="Location Saved", fg="green")
 
     def generate_output(self):
-        if not self.location_data or not hasattr(self.location_data, 'user_data'):
+        date_value = self.date_entry.get()
+        location_value = self.location_entry.get()
+
+        if not date_value or not location_value:
+            messagebox.showerror("Missing Input", "Please enter both date and location.")
+            return
+
+        print(f"Date: {date_value}, Location: {location_value}")
+
+        if not self.location_data or not hasattr(self.location_data, 'user_data' and not date_value):
+            messagebox.showerror("Error", "Load or save a location first.")
+            return
+
+        if not self.location_data or not hasattr(self.location_data, 'user_data' and not date_value):
             messagebox.showerror("Error", "Load or save a location first.")
             return
 
