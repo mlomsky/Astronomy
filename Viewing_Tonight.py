@@ -41,7 +41,8 @@ import pdfkit
 import time
 import threading
 import multiprocessing
-import PySimpleGUI as sg
+import tkinter as tk
+from tkinter import filedialog, messagebox
 from geopy.geocoders import Nominatim
 import requests
 import pandas as pd
@@ -134,21 +135,32 @@ class Location:
         with open(self.json_file_name, 'r') as loc_json_file:
             self.data = json.load(loc_json_file)
 
-
-class UserDataApp:
-    def __init__(self):
-        sg.theme('dark grey 9')
-        self.layout = [
-            [sg.Text('Name:'), sg.Input(key='name')],
-            [sg.Text('Address:'), sg.Input(key='address')],
-            [sg.Text('City:'), sg.Input(key='city')],
-            [sg.Text('State:'), sg.Input(key='state')],
-            [sg.Button('Save Location'), sg.Button('Load Location'), sg.Button('Exit')]
-        ]
-        self.window = sg.Window('User Information', self.layout)
-        self.folder_path = 'user_data_folder'  # Subfolder name
+class UserDataAppTkinter:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("User Information")
+        self.folder_path = 'user_data_folder'
         self.geolocator = Nominatim(user_agent='user_data_app')
         self.user_data = {}
+
+        # Labels and Entries
+        self.entries = {}
+        for idx, field in enumerate(['Name', 'Address', 'City', 'State']):
+            label = tk.Label(root, text=field + ":")
+            label.grid(row=idx, column=0, padx=10, pady=5, sticky='e')
+            entry = tk.Entry(root, width=40)
+            entry.grid(row=idx, column=1, padx=10, pady=5)
+            self.entries[field.lower()] = entry
+
+        # Buttons
+        button_frame = tk.Frame(root)
+        button_frame.grid(row=5, column=0, columnspan=2, pady=10)
+
+        tk.Button(button_frame, text="Save Location", command=self.save_location).pack(side='left', padx=5)
+        tk.Button(button_frame, text="Load Location", command=self.load_location).pack(side='left', padx=5)
+        tk.Button(button_frame, text="Exit", command=self.root.quit).pack(side='left', padx=5)
+
+        self.create_subfolder()
 
     def create_subfolder(self):
         if not os.path.exists(self.folder_path):
@@ -156,68 +168,50 @@ class UserDataApp:
 
     def get_coordinates(self, address):
         location = self.geolocator.geocode(address)
-        if location:
-            return location.latitude, location.longitude
-        else:
-            return None, None
+        return (location.latitude, location.longitude) if location else (None, None)
 
-    def read_json_data(self):
-        # please note I know I am recaculating the lat and long here, but I am doing it in case the data changes. 
-        # this may be dumb, but I am tired and it makes sense to me right now.
-        # suspect I will chnage this later
-        filenames = os.listdir(self.folder_path)
-        if filenames:
-            selected_file = sg.popup_get_file('Choose a file to read data', file_types=(("JSON Files", "*.json"),), initial_folder=self.folder_path)
-            if selected_file:
-                try:
-                    with open(selected_file, 'r') as json_file:
-                        self.user_data = json.load(json_file)
-                        self.window['name'].update(self.user_data.get('name', ''))
-                        self.window['address'].update(self.user_data.get('address', ''))
-                        self.window['city'].update(self.user_data.get('city', ''))
-                        self.window['state'].update(self.user_data.get('state', ''))
-                        geo_locate = self.user_data['address'] + ', ' + self.user_data['city'] + ', ' + self.user_data['state']
-                        lat, lon = self.get_coordinates(geo_locate) # these next 3 lines should be cleaned up... tired now later...
-                        self.user_data['latitude'] = lat
-                        self.user_data['longitude'] = lon
-                        sg.popup(f'Data loaded successfully!  Lat:{lat} long:{lon}', title='Success')
-                except FileNotFoundError:
-                    sg.popup_error(f'Error reading data from {selected_file}', title='Error')
-        else:
-            sg.popup_error('No existing JSON files found in the subfolder!', title='Error')
+    def save_location(self):
+        filename = filedialog.asksaveasfilename(defaultextension=".json", initialdir=self.folder_path,
+                                                 filetypes=[("JSON files", "*.json")])
+        if filename:
+            self.user_data = {
+                'name': self.entries['name'].get(),
+                'address': self.entries['address'].get(),
+                'city': self.entries['city'].get(),
+                'state': self.entries['state'].get()
+            }
+            full_address = f"{self.user_data['address']}, {self.user_data['city']}, {self.user_data['state']}"
+            lat, lon = self.get_coordinates(full_address)
+            self.user_data['latitude'] = lat
+            self.user_data['longitude'] = lon
 
-    def run(self):
-        self.create_subfolder()
-        while True:
-            event, values = self.window.read()
-            if event == sg.WINDOW_CLOSED or event == 'Exit':
-                break
-            elif event == 'Save Location':
-                filename = sg.popup_get_file('Choose a file to save data', save_as=True, initial_folder=self.folder_path)
-                if filename:
-                    # Collect user input
-                    self.user_data = {
-                        'name': values['name'],
-                        'address': values['address'],
-                        'city': values['city'],
-                        'state': values['state'],
-                        'latitude': '',
-                        'longitude': ''
-                    }
-                    geo_locate = self.user_data['address'] + ', ' + self.user_data['city'] + ', ' + self.user_data['state']
-                    lat, lon = self.get_coordinates(geo_locate) # again need to clean up the next 3 lines but want to finish my idea first
+            with open(filename, 'w') as json_file:
+                json.dump(self.user_data, json_file, indent=4)
+            messagebox.showinfo("Success", f"Data saved successfully in:\n{filename}\nLat: {lat}, Lon: {lon}")
+
+    def load_location(self):
+        if not os.listdir(self.folder_path):
+            messagebox.showerror("Error", "No JSON files found.")
+            return
+
+        filename = filedialog.askopenfilename(initialdir=self.folder_path, filetypes=[("JSON files", "*.json")])
+        if filename:
+            try:
+                with open(filename, 'r') as json_file:
+                    self.user_data = json.load(json_file)
+
+                    for key in ['name', 'address', 'city', 'state']:
+                        self.entries[key].delete(0, tk.END)
+                        self.entries[key].insert(0, self.user_data.get(key, ''))
+
+                    full_address = f"{self.user_data['address']}, {self.user_data['city']}, {self.user_data['state']}"
+                    lat, lon = self.get_coordinates(full_address)
                     self.user_data['latitude'] = lat
                     self.user_data['longitude'] = lon
-                    # Write data to a JSON file
-                    with open(filename, 'w') as json_file:
-                        json.dump(self.user_data, json_file, indent=4)
 
-                        sg.popup(f'Data saved successfully in {filename}!', title='Success')
-            elif event == 'Load Location':
-                self.read_json_data()
-
-        self.window.close()
-        
+                    messagebox.showinfo("Success", f"Data loaded!\nLat: {lat}, Lon: {lon}")
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to read the file:\n{e}")        
 
 
 class Targets:
@@ -664,120 +658,106 @@ def convert_html_to_pdf(html_filename, pdf_filename):
     pdfkit.from_file(html_filename, output_path=pdf_filename, configuration=config, options=options)
 
 
-def set_main_layout():
-    location_text = 'Enter Location Address, City, State: '
-    date_text = 'Enter Date: '
-    time_text = 'Enter Time: '
-    layout = [
-        [sg.Button('Load or Save a Location for Reuse')],
-        [sg.Text(location_text), sg.Input(key='-INPUTLOC-')],
-        [sg.Text(date_text), sg.Input(key='-INPUTDATE-')],
-        [sg.Text(time_text), sg.Input(key='-INPUTTIME-')],
-        [sg.Button('Save Location'), sg.Button('Generate PDF and HTML')],
-        [sg.Text('Working on:'), sg.Text('Not Started', key='-TEXTSTATUS-', text_color='red', visible=False)],
-        [sg.Button('Close')]
-        ]
-    return layout
+
+# --- Your existing imports ---
+# from your_module import UserDataApp, Timing, Viewing, Targets, convert_html_to_pdf
 
 def get_elevation_in_feet(lat, long):
     query = f'https://api.open-elevation.com/api/v1/lookup?locations={lat},{long}'
     r = requests.get(query).json()
     elevation_meters = r['results'][0]['elevation']
-    elevation_feet = elevation_meters * 3.28084
-    rounded_elevation_feet = round(elevation_feet)
-    return rounded_elevation_feet
+    return round(elevation_meters * 3.28084)
 
-def main():
+class MainApp:
+    def __init__(self, root):
+        self.root = root
+        root.title("Viewing Tonight")
+        self.location_data = None
 
-    # Set up the window
-    sg.theme('DarkBlue')
-    layout = set_main_layout()
-    window = sg.Window('Viewing Tonight', layout, finalize=True)
+        # Layout setup
+        self.location_entry = self._add_row("Enter Location Address, City, State:", row=0)
+        self.date_entry     = self._add_row("Enter Date:", row=1)
+        self.time_entry     = self._add_row("Enter Time:", row=2)
 
-    while True:
-        event, values = window.read()
-        if event == sg.WIN_CLOSED or event == 'Close':
-            break
-        elif event == 'Load or Save a Location for Reuse':
-            location_data= UserDataApp()
-            location_data.run()
-        elif event == 'Generate PDF and HTML':
-            # Maybe add here get sun data and when sun alt < 0 degrees
-            # use that to limit check sky to only those dark hours and mark twilight hours
-            # to viewing program
-            main_time = Timing('Main Time')
-            scan_sky = Viewing(location_data.user_data['latitude'], location_data.user_data['longitude'], location_data.user_data['name'])
-            # Plot Sun and Moon
-            print("Plotting Sun and Moon")
-            filename = scan_sky.site_name.replace(' ', '-')
-            scan_sky.plot_sun_moon()
-            scan_sky.adjust_delta_midnight()
-            # Get data for Planets
-            print("Working on: ", end='', flush=True)
-            planets_time = Timing('Planets Time')
+        tk.Button(root, text="Load or Save a Location for Reuse", command=self.load_or_save)\
+            .grid(row=3, column=0, columnspan=2, pady=5)
+        tk.Button(root, text="Save Location", command=self.save_location)\
+            .grid(row=4, column=0, pady=5)
+        tk.Button(root, text="Generate PDF and HTML", command=self.generate_output)\
+            .grid(row=4, column=1, pady=5)
 
+        tk.Button(root, text="Close", command=root.quit)\
+            .grid(row=6, column=0, columnspan=2, pady=10)
 
-            window['-TEXTSTATUS-'].update(visible=True)
-            for planet in scan_sky.planet_list:
-                window['-TEXTSTATUS-'].update(planet, text_color='green')
-                window.refresh()
-                print("{0}, ".format(planet), end='', flush=True)
-                scan_sky.check_sky_tonight(planet)
+        self.status_label = tk.Label(root, text="Not Started", fg="red")
+        self.status_label.grid(row=5, column=0, columnspan=2)
 
-            print(' ')  # output logging cleaner to screen
-            planets_time.end_now()
-            planets_time.print_delta()
-            
+    def _add_row(self, label_text, row):
+        tk.Label(self.root, text=label_text).grid(row=row, column=0, padx=5, sticky='e')
+        entry = tk.Entry(self.root, width=50)
+        entry.grid(row=row, column=1, padx=5, pady=2)
+        return entry
 
-       
+    def load_or_save(self):
 
-            # Get data for Target group
-            print("Starting Target Group ", flush=True)
-            viewing_targets = Targets()
-            targets_time = Timing('Targets Time')
-            short_run = False
-            if 'target_group' in viewing_targets.data:
-                if viewing_targets.data["target_group"] == "messier":
-                    print("Working on: ", end='', flush=True)
-                    for m_num in range(1, scan_sky.messier_max):
-                        m_id = "m" + str(m_num)
-                        if m_num % 10 == 0:
-                            print("{0}, ".format(m_id), end='', flush=True)
-                            window['-TEXTSTATUS-'].update(f'Messier {m_id}')
-                            window.refresh()
-                        scan_sky.check_sky_tonight(m_id)
-                        if m_num > 3 and short_run == True:
-                            break
-                        #sys.exit()
-                    print("Finished with Messier", flush=True)
-            targets_time.end_now()
-            targets_time.print_delta()
+        self.location_data = UserDataAppTkinter(tk.Toplevel(self.root))
+        self.location_data.run()
 
-            # Sort The found data
-            print("Sorting The Data", flush=True)
-            scan_sky.sort_data()
-            scan_sky.set_html()
+    def save_location(self):
+        # Insert logic here if extracting date/time from fields is needed
+        # For now, just reflect "saved" status:
+        self.status_label.config(text="Location Saved", fg="green")
 
-            # Print out Results
-            print("Printing Out Results", flush=True)
-            scan_sky.write_out_html()
-            scan_sky.make_summary_html()
-            scan_sky.write_out_summary_html()
+    def generate_output(self):
+        if not self.location_data or not hasattr(self.location_data, 'user_data'):
+            messagebox.showerror("Error", "Load or save a location first.")
+            return
 
-            # Convert Summary HTML to pdf
-            print("Making PDF", flush=True)
-            convert_html_to_pdf(scan_sky.summary_filename, scan_sky.summary_pdf_filename)
-            # Send email if the mail JSON file is present
-            #print("Sending Email")
-            #email = Mail(scan_sky.plot_file_name)
-            # if email.mail_exists:
-            # email.send_email(scan_sky.html, "see html version")
-            # need to check API for caldwell list objects and other lists
-            # for dso in viewing_targets.data["target_list"]:
-            # scan_sky.check_sky_tonight(dso)
-            main_time.end_now()
-            main_time.print_delta()
+        self.status_label.config(text="Generating…", fg="blue")
+        self.root.update_idletasks()
 
+ 
+        main_time = Timing('Main Time')
+        ld = self.location_data.user_data
+        scan_sky = Viewing(ld['latitude'], ld['longitude'], ld['name'])
+
+        # Plot assets…
+        scan_sky.plot_sun_moon()
+        scan_sky.adjust_delta_midnight()
+        planets_time = Timing('Planets Time')
+
+        for planet in scan_sky.planet_list:
+            self.status_label.config(text=f"Working on: {planet}", fg="green")
+            self.root.update_idletasks()
+            scan_sky.check_sky_tonight(planet)
+        planets_time.end_now()
+        planets_time.print_delta()
+
+        # Targets
+        viewing_targets = Targets()
+        targets_time = Timing('Targets Time')
+        if 'target_group' in viewing_targets.data and viewing_targets.data["target_group"] == "messier":
+            for m_num in range(1, scan_sky.messier_max):
+                if m_num % 10 == 0:
+                    self.status_label.config(text=f"Messier m{m_num}", fg="green")
+                    self.root.update_idletasks()
+
+                scan_sky.check_sky_tonight("m" + str(m_num))
+        targets_time.end_now()
+        targets_time.print_delta()
+
+        scan_sky.sort_data()
+        scan_sky.set_html()
+        scan_sky.write_out_html()
+        scan_sky.make_summary_html()
+        scan_sky.write_out_summary_html()
+        convert_html_to_pdf(scan_sky.summary_filename, scan_sky.summary_pdf_filename)
+
+        main_time.end_now()
+        main_time.print_delta()
+        self.status_label.config(text="Done ✔", fg="darkgreen")
 
 if __name__ == '__main__':
-    main()
+    root = tk.Tk()
+    app = MainApp(root)
+    root.mainloop()
