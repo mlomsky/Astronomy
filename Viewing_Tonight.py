@@ -848,7 +848,12 @@ def convert_html_to_pdf(html_filename, pdf_filename):
     except ImportError:
         print("WeasyPrint not available. Trying alternative methods...")
     except Exception as e:
-        print(f"WeasyPrint failed: {e}. Trying alternative methods...")
+        error_msg = str(e).lower()
+        if 'libgobject' in error_msg or 'cannot load library' in error_msg:
+            print("WeasyPrint installation issue detected (missing system libraries).")
+            print("This is common on Windows. Trying alternative PDF methods...")
+        else:
+            print(f"WeasyPrint failed: {e}. Trying alternative methods...")
     
     # Method 2: Try pdfkit if available
     if not success:
@@ -888,13 +893,48 @@ def convert_html_to_pdf(html_filename, pdf_filename):
         except Exception as e:
             print(f"pdfkit failed: {e}")
     
-    # Method 3: Try using browser automation (if nothing else works)
-    if not success:
+    # Method 3: Try simple browser print method (Windows only)
+    if not success and os.name == 'nt':  # Windows
         try:
-            # This would require selenium + webdriver, but let's skip for now
-            print("Browser automation method not implemented yet.")
-        except:
-            pass
+            # Try to use Chrome/Edge for PDF conversion
+            browsers = [
+                r'C:\Program Files\Google\Chrome\Application\chrome.exe',
+                r'C:\Program Files (x86)\Google\Chrome\Application\chrome.exe',
+                r'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe',
+                r'C:\Program Files\Microsoft\Edge\Application\msedge.exe'
+            ]
+            
+            browser_found = None
+            for browser_path in browsers:
+                if os.path.exists(browser_path):
+                    browser_found = browser_path
+                    break
+            
+            if browser_found:
+                # Convert file path to file:// URL
+                file_url = f"file:///{os.path.abspath(html_filename).replace('\\', '/')}"
+                
+                # Chrome/Edge headless PDF generation
+                cmd = [
+                    browser_found,
+                    '--headless',
+                    '--disable-gpu',
+                    '--print-to-pdf=' + os.path.abspath(pdf_filename),
+                    '--print-to-pdf-no-header',
+                    file_url
+                ]
+                
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+                if result.returncode == 0 and os.path.exists(pdf_filename):
+                    print(f"PDF successfully created using browser: {pdf_filename}")
+                    success = True
+                else:
+                    print("Browser PDF generation failed.")
+            else:
+                print("No suitable browser found for PDF generation.")
+                
+        except Exception as e:
+            print(f"Browser PDF generation failed: {e}")
     
     # If all methods fail, provide helpful message
     if not success:
@@ -902,11 +942,15 @@ def convert_html_to_pdf(html_filename, pdf_filename):
         print("PDF GENERATION FAILED - but your HTML file is ready!")
         print("="*60)
         print(f"Your astronomy report is available as: {html_filename}")
-        print("\nTo enable PDF generation, install one of these:")
-        print("1. WeasyPrint (recommended): pip install weasyprint")
-        print("2. pdfkit + wkhtmltopdf:")
+        print("\nPDF Generation Options:")
+        print("1. Manual: Open the HTML file in your browser and use 'Print → Save as PDF'")
+        print("2. Install pdfkit + wkhtmltopdf:")
         print("   - pip install pdfkit")
         print("   - Download wkhtmltopdf from: https://wkhtmltopdf.org/downloads.html")
+        print("3. WeasyPrint alternative (if libraries issue persists):")
+        print("   - Try: pip uninstall weasyprint")
+        print("   - Then: pip install weasyprint")
+        print("   - Or use conda: conda install -c conda-forge weasyprint")
         print("="*60)
 
 
