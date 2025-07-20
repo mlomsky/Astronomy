@@ -37,7 +37,6 @@ from astropy.coordinates import get_body
 from astral import moon
 from Messier import Messier
 from collections import defaultdict
-import pdfkit
 import time
 import threading
 import multiprocessing
@@ -555,60 +554,6 @@ class Viewing:
                 self.v_i_ctr += 1
         check_time.end_now()
         # check_time.print_delta()
-        # Set summary base values for object
-        self.viewing_summary_dictionary[obj] = {"rise": 999, "set": 0, "max_az": 0}
-
-        # Move on to the calculation
-        check_time = Timing('check time')
-        if obj in self.planet_list:
-            sky_obj = get_body(obj, Time(self.date + ' 00:00:00'))
-        else:
-            sky_obj = SkyCoord.from_name(obj)
-        sky_objaltazs_viewing_date = sky_obj.transform_to(self.viewing_frame)
-
-        last_hour = 999
-        for altaz in sky_objaltazs_viewing_date:  # need to parallelize this at some point
-            altitude = altaz.alt
-            (sign, d, m, s) = altitude.signed_dms
-            (zsign, zd, zm, zs) = altaz.az.signed_dms
-            zstr = zsign + zd
-            ohour, omin, odate, oday, omon = str(altaz.obstime)[11:13], str(altaz.obstime)[14:16], str(altaz.obstime)[0:10], str(altaz.obstime)[8:10], str(altaz.obstime)[5:7]
-
-            object_type = 'Planet'
-            suggested_filters = ''
-            finder_link = ''
-            difficulty_html = ''
-            if obj not in self.planet_list:
-                object_type = self.my_messier.object_type[obj]
-                finder_link = f'<a href="https://freestarcharts.com/images/Articles/Messier/Single/{obj.upper()}_Finder_Chart.pdf" target="_blank">Finder Chart</a>'
-                suggested_filters = self.my_messier.messier_filters.get(obj, '')
-                difficulty = self.my_messier.messier_difficulty.get(obj, '')
-                difficulty_html = f'<span class="dot{"green" if difficulty == "easy" else "orange" if difficulty == "medium" else "red"}"></span>' if difficulty else ''
-
-
-            skip_print = not (0 <= int(omin) < 5 and ohour != last_hour)
-            last_hour = ohour
-            if altitude.is_within_bounds(20 * u.deg, 90 * u.deg) and not skip_print:
-                obs_date, obs_hour = un_utc(odate, ohour)
-                tr_bgclr = "#d5f5e3" if int(ohour) % 2 == 0 else "#d6eaf8"
-                compass = return_sector(zstr)
-                direction = f'{zstr} - {compass}'
-                table_row = f'<tr bgcolor="{tr_bgclr}"><td>{obj.upper()}</td><td>{object_type}</td><td>{obs_date}</td><td>{obs_hour}</td><td>{d}&#730;</td><td>{direction}&#730;</td><td>{suggested_filters}</td><td>{finder_link}</td></tr>\n'
-                key = int(omon) * 10000 + int(oday) * 100 + int(ohour)
-                self.viewing_index[self.v_i_ctr] = key
-                self.viewing_dictionary[self.v_i_ctr] = table_row
-                # Set summary info
-                summary = self.viewing_summary_dictionary[obj]
-                if summary["rise"] == 999:
-                    summary.update({"rise": obs_hour, "type": object_type, "date": obs_date, "filters": suggested_filters, "link": finder_link, "difficulty": difficulty_html})
-                summary.update({"set": obs_hour})   # set to hour found here as this will be the last
-                if d > summary["max_az"]:
-                    summary.update({"max_az": d, "max_az_hr": obs_hour})  # note d is altitude, not sure why I left that
-                self.viewing_summary_dictionary[obj] = summary
-                # increment Counters
-                self.v_i_ctr += 1
-        check_time.end_now()
-        # check_time.print_delta()
 
     def write_out_html(self):
         with open('astronomy_report.html', 'w') as f:
@@ -844,24 +789,125 @@ def process_object_batch(args):
 
 
 def convert_html_to_pdf(html_filename, pdf_filename):
-    # Define path to wkhtmltopdf.exe
-    path_to_wkhtmltopdf = r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe'
-
-    # Point pdfkit configuration to wkhtmltopdf.exe
-    config = pdfkit.configuration(wkhtmltopdf=path_to_wkhtmltopdf)
-
-    # set options
-    # orientation makes it look better landscape vs portrait
-    # enable-external-links was key to enable them to work
-    # enable-local-file-access is needed to alllow the local image of the sun moon chart to be used
-    options = {
-        'enable-external-links': None,
-        "enable-local-file-access": None,
-        'orientation': 'Landscape'
-    }
-
-    # Convert HTML file to PDF
-    pdfkit.from_file(html_filename, output_path=pdf_filename, configuration=config, options=options)
+    """
+    Convert HTML file to PDF using multiple fallback methods
+    """
+    import subprocess
+    import os
+    
+    success = False
+    
+    # Method 1: Try WeasyPrint (modern, pure Python)
+    try:
+        from weasyprint import HTML, CSS
+        
+        # Custom CSS for better PDF formatting
+        css_string = """
+        @page {
+            size: A4 landscape;
+            margin: 1cm;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 10pt;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            page-break-inside: avoid;
+        }
+        
+        th, td {
+            border: 1px solid black;
+            padding: 4px;
+            text-align: left;
+        }
+        
+        h1, h2 {
+            page-break-after: avoid;
+        }
+        
+        img {
+            max-width: 100%;
+            height: auto;
+        }
+        
+        a {
+            color: blue;
+            text-decoration: underline;
+        }
+        """
+        
+        css = CSS(string=css_string)
+        HTML(filename=html_filename).write_pdf(pdf_filename, stylesheets=[css])
+        print(f"PDF successfully created using WeasyPrint: {pdf_filename}")
+        success = True
+        
+    except ImportError:
+        print("WeasyPrint not available. Trying alternative methods...")
+    except Exception as e:
+        print(f"WeasyPrint failed: {e}. Trying alternative methods...")
+    
+    # Method 2: Try pdfkit if available
+    if not success:
+        try:
+            import pdfkit
+            
+            # Try to find wkhtmltopdf in common locations
+            possible_paths = [
+                r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe',
+                r'C:\Program Files (x86)\wkhtmltopdf\bin\wkhtmltopdf.exe',
+                'wkhtmltopdf'  # If in PATH
+            ]
+            
+            config = None
+            for path in possible_paths:
+                if os.path.exists(path) or path == 'wkhtmltopdf':
+                    try:
+                        config = pdfkit.configuration(wkhtmltopdf=path)
+                        break
+                    except:
+                        continue
+            
+            if config:
+                options = {
+                    'enable-external-links': None,
+                    "enable-local-file-access": None,
+                    'orientation': 'Landscape'
+                }
+                pdfkit.from_file(html_filename, output_path=pdf_filename, configuration=config, options=options)
+                print(f"PDF successfully created using pdfkit: {pdf_filename}")
+                success = True
+            else:
+                print("wkhtmltopdf not found in common locations.")
+                
+        except ImportError:
+            print("pdfkit not available.")
+        except Exception as e:
+            print(f"pdfkit failed: {e}")
+    
+    # Method 3: Try using browser automation (if nothing else works)
+    if not success:
+        try:
+            # This would require selenium + webdriver, but let's skip for now
+            print("Browser automation method not implemented yet.")
+        except:
+            pass
+    
+    # If all methods fail, provide helpful message
+    if not success:
+        print("\n" + "="*60)
+        print("PDF GENERATION FAILED - but your HTML file is ready!")
+        print("="*60)
+        print(f"Your astronomy report is available as: {html_filename}")
+        print("\nTo enable PDF generation, install one of these:")
+        print("1. WeasyPrint (recommended): pip install weasyprint")
+        print("2. pdfkit + wkhtmltopdf:")
+        print("   - pip install pdfkit")
+        print("   - Download wkhtmltopdf from: https://wkhtmltopdf.org/downloads.html")
+        print("="*60)
 
 
 
