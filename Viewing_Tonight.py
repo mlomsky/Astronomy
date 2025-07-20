@@ -158,7 +158,7 @@ class UserDataAppTkinter:
 
         tk.Button(button_frame, text="Save Location", command=self.save_location).pack(side='left', padx=5)
         tk.Button(button_frame, text="Load Location", command=self.load_location).pack(side='left', padx=5)
-        tk.Button(button_frame, text="Exit", command=self.root.quit).pack(side='left', padx=5)
+        tk.Button(button_frame, text="Exit", command=self.root.destroy).pack(side='left', padx=5)
 
         self.create_subfolder()
   
@@ -206,10 +206,11 @@ class UserDataAppTkinter:
 
                     full_address = f"{self.user_data['address']}, {self.user_data['city']}, {self.user_data['state']}"
                     lat, lon = self.get_coordinates(full_address)
+                    name = self.user_data['name']
                     self.user_data['latitude'] = lat
                     self.user_data['longitude'] = lon
 
-                    messagebox.showinfo("Success", f"Data loaded!\nLat: {lat}, Lon: {lon}")
+                    messagebox.showinfo("Success", f"Data loaded for {name}\nLat: {lat}, Lon: {lon}")
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to read the file:\n{e}")        
 
@@ -675,9 +676,8 @@ class MainApp:
         self.location_data = None
 
         # Layout setup
-        self.location_entry = self._add_row("Enter Location Address, City, State:", row=0)
-        self.date_entry     = self._add_row("Enter Date:", row=1)
-        self.time_entry     = self._add_row("Enter Time:", row=2)
+        self.location_entry = self._add_row("Enter Location (Address, City, State):", row=0)
+        self.date_entry     = self._add_row("Enter Date (YYYY-MM-DD):", row=1)
 
         tk.Button(root, text="Load or Save a Location for Reuse", command=self.load_or_save)\
             .grid(row=3, column=0, columnspan=2, pady=5)
