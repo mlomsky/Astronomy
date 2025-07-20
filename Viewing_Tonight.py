@@ -34,7 +34,7 @@ from astropy.visualization import astropy_mpl_style, quantity_support
 import matplotlib.pyplot as plt
 from astropy.coordinates import get_sun
 from astropy.coordinates import get_body
-from PyAstronomy import pyasl # Using this to get Lunar Phase
+from astral import moon
 from Messier import Messier
 from collections import defaultdict
 import pdfkit
@@ -636,10 +636,11 @@ def header_row():
 
 def get_lunar_phase(lunar_date):
     yr, m, d = map(int, lunar_date.split('-'))
-    new_date = datetime.datetime(yr, m, d)
-    ph = int(pyasl.jdcnv(new_date))
-    return int((pyasl.moonphase(ph) * 100)[0]) # moon phase returns a float between 0 and 1
-#  pyasl.jdconv converts the date to the date format that moonphase needs to use
+    date = datetime.date(yr, m, d)
+    phase = moon.phase(date)  # returns lunar phase as a float 0-29.53
+    # Convert to percentage of the moon cycle (0 new moon, 15 full moon)
+    percent = int((phase / 29.53) * 100)
+    return percent
 
 
 def convert_html_to_pdf(html_filename, pdf_filename):
