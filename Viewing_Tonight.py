@@ -189,7 +189,6 @@ class UserDataAppTkinter:
 
             with open(filename, 'w') as json_file:
                 json.dump(self.user_data, json_file, indent=4)
-            messagebox.showinfo("Success", f"Data saved successfully in:\n{filename}\nLat: {lat}, Lon: {lon}")
             
             # Update the main app's location entry if callback is provided
             if self.location_entry_callback:
@@ -220,8 +219,7 @@ class UserDataAppTkinter:
                     self.user_data['latitude'] = lat
                     self.user_data['longitude'] = lon
 
-                    messagebox.showinfo("Success", f"Data loaded for {name}\nLat: {lat}, Lon: {lon}")
-                    
+
                     # Update the main app's location entry if callback is provided
                     if self.location_entry_callback:
                         self.location_entry_callback(full_address)
@@ -691,6 +689,10 @@ class MainApp:
         self.location_name_entry = self._add_row("Enter Location Name:", row=0)
         self.location_entry = self._add_row("Enter Location (Address, City, State):", row=1)
         self.date_entry     = self._add_row("Enter Date (YYYY-MM-DD):", row=2)
+        
+        # Set default date to today
+        today = datetime.date.today().strftime('%Y-%m-%d')
+        self.date_entry.insert(0, today)
 
         tk.Button(root, text="Load or Save a Location for Reuse", command=self.load_or_save)\
             .grid(row=4, column=0, columnspan=2, pady=5)
@@ -702,7 +704,7 @@ class MainApp:
         tk.Button(root, text="Close", command=root.quit)\
             .grid(row=7, column=0, columnspan=2, pady=10)
 
-        self.status_label = tk.Label(root, text="Not Started", fg="red")
+        self.status_label = tk.Label(root, text="Not Started", fg="red", width=50)
         self.status_label.grid(row=6, column=0, columnspan=2)
 
     def _add_row(self, label_text, row):
