@@ -54,6 +54,9 @@ Any item with an X means I changed my mind on that enhancement, and the check, o
 * auto fill in current time
 #### Upgrade 11
 * take local name and find geo coords and save
+* note: currently using hard coded location.json file
+* functionality to update user info, date time, location loading / saving / using updated one not working
+* it is however getting the correct location
 * make dialog for save locations
 * :heavy_check_mark: show current status in new pop up
     * changed to just adding a text field in the main pop-up to show it
