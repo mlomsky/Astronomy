@@ -136,13 +136,14 @@ class Location:
             self.data = json.load(loc_json_file)
 
 class UserDataAppTkinter:
-    def __init__(self, root, location_entry_callback=None):
+    def __init__(self, root, location_entry_callback=None, location_name_callback=None):
         self.root = root
         self.root.title("User Information")
         self.folder_path = 'user_data_folder'
         self.geolocator = Nominatim(user_agent='user_data_app')
         self.user_data = {}
         self.location_entry_callback = location_entry_callback
+        self.location_name_callback = location_name_callback
 
         # Labels and Entries
         self.entries = {}
@@ -193,6 +194,10 @@ class UserDataAppTkinter:
             # Update the main app's location entry if callback is provided
             if self.location_entry_callback:
                 self.location_entry_callback(full_address)
+            
+            # Update the main app's location name if callback is provided
+            if self.location_name_callback:
+                self.location_name_callback(self.user_data['name'])
 
     def load_location(self):
         if not os.listdir(self.folder_path):
@@ -220,6 +225,10 @@ class UserDataAppTkinter:
                     # Update the main app's location entry if callback is provided
                     if self.location_entry_callback:
                         self.location_entry_callback(full_address)
+                    
+                    # Update the main app's location name if callback is provided
+                    if self.location_name_callback:
+                        self.location_name_callback(name)
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to read the file:\n{e}")        
 
@@ -682,21 +691,22 @@ class MainApp:
         self.location_data = None
 
         # Layout setup
-        self.location_entry = self._add_row("Enter Location (Address, City, State):", row=0)
-        self.date_entry     = self._add_row("Enter Date (YYYY-MM-DD):", row=1)
+        self.location_name_entry = self._add_row("Enter Location Name:", row=0)
+        self.location_entry = self._add_row("Enter Location (Address, City, State):", row=1)
+        self.date_entry     = self._add_row("Enter Date (YYYY-MM-DD):", row=2)
 
         tk.Button(root, text="Load or Save a Location for Reuse", command=self.load_or_save)\
-            .grid(row=3, column=0, columnspan=2, pady=5)
+            .grid(row=4, column=0, columnspan=2, pady=5)
         tk.Button(root, text="Save Location", command=self.save_location)\
-            .grid(row=4, column=0, pady=5)
+            .grid(row=5, column=0, pady=5)
         tk.Button(root, text="Generate PDF and HTML", command=self.generate_output)\
-            .grid(row=4, column=1, pady=5)
+            .grid(row=5, column=1, pady=5)
 
         tk.Button(root, text="Close", command=root.quit)\
-            .grid(row=6, column=0, columnspan=2, pady=10)
+            .grid(row=7, column=0, columnspan=2, pady=10)
 
         self.status_label = tk.Label(root, text="Not Started", fg="red")
-        self.status_label.grid(row=5, column=0, columnspan=2)
+        self.status_label.grid(row=6, column=0, columnspan=2)
 
     def _add_row(self, label_text, row):
         tk.Label(self.root, text=label_text).grid(row=row, column=0, padx=5, sticky='e')
@@ -710,7 +720,14 @@ class MainApp:
             self.location_entry.delete(0, tk.END)
             self.location_entry.insert(0, full_address)
 
-        self.location_data = UserDataAppTkinter(tk.Toplevel(self.root), location_entry_callback=update_location_entry)
+        # Create a callback function to update the location name
+        def update_location_name(name):
+            self.location_name_entry.delete(0, tk.END)
+            self.location_name_entry.insert(0, name)
+
+        self.location_data = UserDataAppTkinter(tk.Toplevel(self.root), 
+                                              location_entry_callback=update_location_entry,
+                                              location_name_callback=update_location_name)
         # self.location_entry.insert(0,self.location_data.user_data.get('address'))
 
 
