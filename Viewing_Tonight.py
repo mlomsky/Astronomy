@@ -314,25 +314,43 @@ class Viewing:
         self.my_messier = Messier.MessierData()
 
     def set_summary_page_information(self):
-        pageinfo = """<h3>What is this page?</h3>
-        Lists planets and Messier objects visible from the location and date shown above
-        to help you plan your observing session.
-        <h4>Reading the chart</h4>
-        <ul style="margin:2px 0;padding-left:16px;line-height:1.4">
-        <li>Horizontal axis = hours from midnight (0).</li>
-        <li>Red line = Sun. Where it meets the bottom marks sunset (left) and sunrise (right).</li>
-        <li>Light grey shading = twilight; dark shading = full darkness, best for deep-sky viewing.</li>
-        <li>Dashed grey line = Moon. Illumination % is shown in the chart title.</li>
+        pageinfo = """<h2> What is this page for?</h2>
+        The information on this page is intended to help you plan your observing session for the date
+         shown at the top of this page by providing a list of objects which will be visible in the sky over the course
+        of the evening.  The information provided here is applicable to the location shown at the very top of this page.
+        <br>
+        <h3>How to read the chart to the left </h3>
+        <ul>
+        <li>The time axis at the bottom of the chart presents midnight as 0. </li>
+        <li>The red line indicates the sun's altitude over the course of the charted period.  Sunset (left) and sunrise
+        (right) occur at the two points where the red line touches the bottom of the chart.</li>
+        <li>The grey shaded areas on the chart indicate twilight periods.  These are the periods when the sun continues
+         to illuminate sky after sunset or begins illuminating the sky before sunrise.</li>
+        <li>The grey dashed line indicates the moon's altitude over the course of the charted period.  The current
+        amount of lunar illumination is displayed as a percentage above the chart, with 0% indicating new moon, and
+        100% indicating a full moon. </li>
+        <li>Ideal conditions for observing deep sky objects will most commonly take place during the period indicated
+        by the black portion of the chart and with as little moon as possible.</li>
         </ul>
-        <h4>Table columns</h4>
-        <ul style="margin:2px 0;padding-left:16px;line-height:1.4">
-        <li><b>Rise Hour</b> — earliest the object is observable (no earlier than sunset).</li>
-        <li><b>Set Hour</b> — latest the object is observable (no later than sunrise).</li>
-        <li><b>Max Altitude</b> — highest point reached and when it occurs.</li>
-        <li><b>Finder Chart</b> — star map link to help locate the object.</li>
-        <li><b>Suggested Filter</b> — recommended filter if any. Brighter objects rarely need
-        one; filters help reveal detail on fainter objects, especially from light-polluted sites.</li>
-        </ul>"""
+        <h2>What is the table below for?</h2>
+        The table below displays a list of planets and Messier objects which will be above the horizon between sunset
+        and sunrise.
+        <h3>Below Table Column Explanation</h3>
+        <ul>
+        <li><b>Rise Hour</b> indicates the earliest time at which the object may be observed.  The earliest time indicated by
+         the Rise Hour column will be sunset; this is because you (typically) won't be able to see the object earlier
+         than sundown.</li>
+        <li><b>Set Hour</b> indicates the latest time at which the object may be observed.  The latest time indicated by
+         the Set Hour column will be sunrise; this is because you (typically) will no longer be able to see the object
+         after sunrise.</li>
+        <li><b>Max Altitude</b> provides the time at which the object will be highest in the sky and how high it will be at
+         that time. </li>
+        <li><b>Finder Chart</b> contains a link to a star map to help you know what stars are near the object. </li>
+        <li><b>Suggested Filter</b> contains information regarding the filter(s) we believe will help reveal the most
+         detail for an object, but this can be rather subjective.  Brighter objects typically do not require a filter.
+         Fainter objects may be observed without a filter in ideal conditions, but the right filter can often bring
+         out additional detail, especially when observing from light-polluted locations.</li>
+         </ul>"""
 
         return pageinfo
 
