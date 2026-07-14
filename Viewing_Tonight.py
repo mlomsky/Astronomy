@@ -40,7 +40,6 @@ from collections import defaultdict
 import time
 import threading
 import multiprocessing
-from multiprocessing import Pool, cpu_count
 import tkinter as tk
 from tkinter import filedialog, messagebox
 from geopy.geocoders import Nominatim
@@ -461,56 +460,6 @@ class Viewing:
         d = int(date[8:10])
         return str(datetime.date(yr, m, d) + datetime.timedelta(1))
 
-    def check_sky_tonight_parallel(self, objects_list, batch_size=None):
-        """Process multiple objects in parallel using multiprocessing"""
-        if not objects_list:
-            return
-            
-        # Determine batch size based on CPU count if not specified
-        if batch_size is None:
-            num_cores = min(cpu_count(), 4)  # Limit to 4 cores to avoid overwhelming system
-            batch_size = max(1, len(objects_list) // num_cores)
-        
-        # Prepare parameters for worker processes
-        viewing_params = {
-            'lat': self.lat,
-            'lon': self.long,
-            'height': self.height,
-            'date': self.date,
-            'utcoffset': self.utcoffset,
-            'delta_midnight_linspace': self.delta_midnight,  # Pass the numpy array directly
-            'planet_list': self.planet_list,
-            'min_alt_n': self.min_alt_n,
-            'min_alt_e': self.min_alt_e,
-            'min_alt_s': self.min_alt_s,
-            'min_alt_w': self.min_alt_w,
-        }
-        
-        # Split objects into batches
-        batches = [objects_list[i:i + batch_size] for i in range(0, len(objects_list), batch_size)]
-        batch_args = [(batch, viewing_params) for batch in batches]
-        
-        # Process batches in parallel
-        try:
-            with Pool() as pool:
-                batch_results = pool.map(process_object_batch, batch_args)
-        except Exception as e:
-            print(f"Parallel processing error: {e}")
-            # Fallback to sequential processing
-            for obj in objects_list:
-                self.check_sky_tonight(obj)
-            return
-        
-        # Merge results back into main dictionaries
-        for batch_result in batch_results:
-            for obj, data in batch_result.items():
-                self.viewing_summary_dictionary[obj] = data['summary']
-                for v_i_ctr, key, table_row in data['viewing_data']:
-                    actual_ctr = self.v_i_ctr + v_i_ctr
-                    self.viewing_index[actual_ctr] = key
-                    self.viewing_dictionary[actual_ctr] = table_row
-                self.v_i_ctr += len(data['viewing_data'])
-
     def check_sky_tonight(self, obj):
         """Original single-object processing method"""
         # Set summary base values for object
@@ -737,105 +686,6 @@ def get_lunar_phase(lunar_date):
     return percent
 
 
-def process_object_batch(args):
-    """Helper function for parallel processing of sky objects"""
-    objects, viewing_params = args
-    results = {}
-    
-    # Recreate viewing frame from parameters
-    viewing_location = EarthLocation(lat=viewing_params['lat'] * u.deg, 
-                                   lon=viewing_params['lon'] * u.deg, 
-                                   height=viewing_params['height'] * u.m)
-    
-    # Recreate time array
-    midnight = Time(viewing_params['date'] + ' 00:00:00') - viewing_params['utcoffset']
-    viewing_times = midnight + viewing_params['delta_midnight_linspace']
-    viewing_frame = AltAz(obstime=viewing_times, location=viewing_location)
-    
-    planet_list = viewing_params['planet_list']
-    my_messier = Messier.MessierData()
-    
-    for obj in objects:
-        # Set summary base values for object
-        obj_summary = {"rise": 999, "set": 0, "max_az": 0}
-        obj_viewing_data = []
-        
-        try:
-            if obj in planet_list:
-                sky_obj = get_body(obj, Time(viewing_params['date'] + ' 00:00:00'))
-            else:
-                ra, dec = my_messier.coordinates[obj]
-                sky_obj = SkyCoord(ra=ra * u.deg, dec=dec * u.deg)
-            sky_objaltazs_viewing_date = sky_obj.transform_to(viewing_frame)
-
-            alts = sky_objaltazs_viewing_date.alt.deg
-            azs  = sky_objaltazs_viewing_date.az.deg
-            iso  = viewing_times.iso
-
-            hours   = np.array([t[11:13] for t in iso])
-            minutes = np.array([int(t[14:16]) for t in iso])
-            dates   = np.array([t[0:10] for t in iso])
-            days    = np.array([t[8:10] for t in iso])
-            months  = np.array([t[5:7]  for t in iso])
-
-            min_alt_n = viewing_params.get('min_alt_n', 20)
-            min_alt_e = viewing_params.get('min_alt_e', 20)
-            min_alt_s = viewing_params.get('min_alt_s', 20)
-            min_alt_w = viewing_params.get('min_alt_w', 20)
-            min_alt = np.where((azs >= 0)   & (azs < 90),  min_alt_n,
-                      np.where((azs >= 90)  & (azs < 180), min_alt_e,
-                      np.where((azs >= 180) & (azs < 270), min_alt_s,
-                                                            min_alt_w)))
-            candidate_mask    = (alts >= min_alt) & (alts <= 90) & (minutes < 5)
-            candidate_indices = np.where(candidate_mask)[0]
-            v_i_ctr = 0
-
-            object_type = 'Planet'
-            suggested_filters = ''
-            finder_link = ''
-            difficulty_html = ''
-            if obj not in planet_list:
-                object_type = my_messier.object_type.get(obj, 'Unknown')
-                finder_link = f'<a href="https://freestarcharts.com/images/Articles/Messier/Single/{obj.upper()}_Finder_Chart.pdf" target="_blank">Finder Chart</a>'
-                suggested_filters = my_messier.messier_filters.get(obj, '')
-                difficulty = my_messier.messier_difficulty.get(obj, '')
-                difficulty_html = f'<span class="dot{"green" if difficulty == "easy" else "orange" if difficulty == "medium" else "red"}"></span>' if difficulty else ''
-
-            if len(candidate_indices) > 0:
-                _, unique_first_pos = np.unique(hours[candidate_mask], return_index=True)
-                final_indices = candidate_indices[unique_first_pos]
-                for idx in final_indices:
-                    d     = int(alts[idx])
-                    zstr  = int(azs[idx]) + 1
-                    ohour, odate, oday, omon = hours[idx], dates[idx], days[idx], months[idx]
-                    obs_date, obs_hour = un_utc(odate, ohour)
-                    tr_bgclr  = "#d5f5e3" if int(ohour) % 2 == 0 else "#d6eaf8"
-                    compass   = return_sector(zstr)
-                    direction = f'{zstr} - {compass}'
-                    table_row = (f'<tr bgcolor="{tr_bgclr}"><td>{obj.upper()}</td><td>{object_type}</td>'
-                                 f'<td>{obs_date}</td><td>{obs_hour}</td><td>{d}&#730;</td>'
-                                 f'<td>{direction}&#730;</td><td>{suggested_filters}</td><td style="white-space:nowrap">{finder_link}</td></tr>\n')
-                    key = int(omon) * 10000 + int(oday) * 100 + int(ohour)
-                    obj_viewing_data.append((v_i_ctr, key, table_row))
-                    if obj_summary["rise"] == 999:
-                        obj_summary.update({"rise": obs_hour, "rise_dir": compass, "type": object_type, "date": obs_date,
-                                            "filters": suggested_filters, "link": finder_link, "difficulty": difficulty_html})
-                    obj_summary.update({"set": obs_hour, "set_dir": compass})
-                    if d > obj_summary["max_az"]:
-                        obj_summary.update({"max_az": d, "max_az_hr": obs_hour})
-                    v_i_ctr += 1
-            
-            results[obj] = {
-                'summary': obj_summary,
-                'viewing_data': obj_viewing_data
-            }
-        except Exception as e:
-            print(f"Error processing {obj}: {e}")
-            continue
-    
-    return results
-
-
 def convert_html_to_pdf(html_filename, pdf_filename):
     from playwright.sync_api import sync_playwright
     file_url = 'file:///' + os.path.abspath(html_filename).replace('\\', '/')
@@ -994,19 +844,14 @@ class MainApp:
         planets_time.end_now()
         planets_time.print_delta()
 
-        # Process Messier objects in parallel for significant speedup
         viewing_targets = Targets()
         targets_time = Timing('Targets Time')
         if 'target_group' in viewing_targets.data and viewing_targets.data["target_group"] == "messier":
-            self.status_label.config(text="Processing Messier objects in parallel...", fg="green")
-            self.root.update_idletasks()
-            
-            # Create list of all Messier objects
             messier_objects = [f"m{m_num}" for m_num in range(1, scan_sky.messier_max)]
-            
-            # Process in parallel
-            scan_sky.check_sky_tonight_parallel(messier_objects)
-            
+            for obj in messier_objects:
+                self.status_label.config(text=f"Working on: {obj}", fg="green")
+                self.root.update_idletasks()
+                scan_sky.check_sky_tonight(obj)
             self.status_label.config(text="Messier objects processing complete", fg="green")
             self.root.update_idletasks()
             
