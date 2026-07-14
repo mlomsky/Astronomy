@@ -316,6 +316,7 @@ class Viewing:
                                 'astronomy_report_summary.html'
         self.summary_pdf_filename = 'astronomy_report_summary' + self.file_date + self.site_file_name + '.pdf'
         self.my_messier = Messier.MessierData()
+        self._cache_time_arrays()
 
     def set_summary_page_information(self):
         pageinfo = """<h2> What is this page for?</h2>
@@ -386,7 +387,18 @@ class Viewing:
     def adjust_delta_midnight(self):
         self.get_hours_sunset()
         if self.half_dark_hours != 0:
-            self.delta_midnight = np.linspace(-self.half_dark_hours, self.half_dark_hours, 500) * u.hour
+            self.delta_midnight  = np.linspace(-self.half_dark_hours, self.half_dark_hours, 500) * u.hour
+            self.viewing_times   = self.midnight + self.delta_midnight
+            self.viewing_frame   = AltAz(obstime=self.viewing_times, location=self.viewing_location)
+            self._cache_time_arrays()
+
+    def _cache_time_arrays(self):
+        iso = self.viewing_times.iso
+        self._t_hours   = np.array([t[11:13] for t in iso])
+        self._t_minutes = np.array([int(t[14:16]) for t in iso])
+        self._t_dates   = np.array([t[0:10] for t in iso])
+        self._t_days    = np.array([t[8:10] for t in iso])
+        self._t_months  = np.array([t[5:7]  for t in iso])
 
     def get_hours_sunset(self):
         midnight = datetime.datetime.strptime(self.viewing_date_midnight_time, '%Y-%m-%d %H:%M:%S')
@@ -461,8 +473,64 @@ class Viewing:
         d = int(date[8:10])
         return str(datetime.date(yr, m, d) + datetime.timedelta(1))
 
+    def check_all_messier(self):
+        messier_keys = [f"m{i}" for i in range(1, self.messier_max)]
+        ras  = np.array([self.my_messier.coordinates[k][0] for k in messier_keys])
+        decs = np.array([self.my_messier.coordinates[k][1] for k in messier_keys])
+        # Reshape to (N, 1) so numpy broadcasts against the (500,) frame → result shape (N, 500)
+        sky_coords = SkyCoord(ra=ras.reshape(-1, 1) * u.deg, dec=decs.reshape(-1, 1) * u.deg)
+        all_altazs = sky_coords.transform_to(self.viewing_frame)
+
+        for i, obj in enumerate(messier_keys):
+            self.viewing_summary_dictionary[obj] = {"rise": 999, "set": 0, "max_az": 0}
+            alts = all_altazs[i].alt.deg
+            azs  = all_altazs[i].az.deg
+
+            min_alt = np.where((azs >= 0)   & (azs < 90),  self.min_alt_n,
+                      np.where((azs >= 90)  & (azs < 180), self.min_alt_e,
+                      np.where((azs >= 180) & (azs < 270), self.min_alt_s,
+                                                            self.min_alt_w)))
+            candidate_mask    = (alts >= min_alt) & (alts <= 90) & (self._t_minutes < 5)
+            candidate_indices = np.where(candidate_mask)[0]
+
+            object_type       = self.my_messier.object_type[obj]
+            finder_link       = f'<a href="https://freestarcharts.com/images/Articles/Messier/Single/{obj.upper()}_Finder_Chart.pdf" target="_blank">Finder Chart</a>'
+            suggested_filters = self.my_messier.messier_filters.get(obj, '')
+            difficulty        = self.my_messier.messier_difficulty.get(obj, '')
+            difficulty_html   = f'<span class="dot{"green" if difficulty == "easy" else "orange" if difficulty == "medium" else "red"}"></span>' if difficulty else ''
+
+            if len(candidate_indices) > 0:
+                _, unique_first_pos = np.unique(self._t_hours[candidate_mask], return_index=True)
+                final_indices = candidate_indices[unique_first_pos]
+                summary = self.viewing_summary_dictionary[obj]
+                for idx in final_indices:
+                    d     = int(alts[idx])
+                    zstr  = int(azs[idx]) + 1
+                    ohour = self._t_hours[idx]
+                    odate = self._t_dates[idx]
+                    oday  = self._t_days[idx]
+                    omon  = self._t_months[idx]
+                    obs_date, obs_hour = un_utc(odate, ohour)
+                    tr_bgclr  = "#d5f5e3" if int(ohour) % 2 == 0 else "#d6eaf8"
+                    compass   = return_sector(zstr)
+                    direction = f'{zstr} - {compass}'
+                    table_row = (f'<tr bgcolor="{tr_bgclr}"><td>{obj.upper()}</td><td>{object_type}</td>'
+                                 f'<td>{obs_date}</td><td>{obs_hour}</td><td>{d}&#730;</td>'
+                                 f'<td>{direction}&#730;</td><td>{suggested_filters}</td><td style="white-space:nowrap">{finder_link}</td></tr>\n')
+                    key = int(omon) * 10000 + int(oday) * 100 + int(ohour)
+                    self.viewing_index[self.v_i_ctr]      = key
+                    self.viewing_dictionary[self.v_i_ctr] = table_row
+                    if summary["rise"] == 999:
+                        summary.update({"rise": obs_hour, "rise_dir": compass, "type": object_type, "date": obs_date,
+                                        "filters": suggested_filters, "link": finder_link, "difficulty": difficulty_html})
+                    summary.update({"set": obs_hour, "set_dir": compass})
+                    if d > summary["max_az"]:
+                        summary.update({"max_az": d, "max_az_hr": obs_hour})
+                    self.v_i_ctr += 1
+                self.viewing_summary_dictionary[obj] = summary
+
     def check_sky_tonight(self, obj):
-        """Original single-object processing method"""
+        """Single-object processing — used for planets"""
         # Set summary base values for object
         self.viewing_summary_dictionary[obj] = {"rise": 999, "set": 0, "max_az": 0}
 
@@ -475,15 +543,13 @@ class Viewing:
             sky_obj = SkyCoord(ra=ra * u.deg, dec=dec * u.deg)
         sky_objaltazs_viewing_date = sky_obj.transform_to(self.viewing_frame)
 
-        alts = sky_objaltazs_viewing_date.alt.deg
-        azs  = sky_objaltazs_viewing_date.az.deg
-        iso  = self.viewing_times.iso
-
-        hours   = np.array([t[11:13] for t in iso])
-        minutes = np.array([int(t[14:16]) for t in iso])
-        dates   = np.array([t[0:10] for t in iso])
-        days    = np.array([t[8:10] for t in iso])
-        months  = np.array([t[5:7]  for t in iso])
+        alts    = sky_objaltazs_viewing_date.alt.deg
+        azs     = sky_objaltazs_viewing_date.az.deg
+        hours   = self._t_hours
+        minutes = self._t_minutes
+        dates   = self._t_dates
+        days    = self._t_days
+        months  = self._t_months
 
         min_alt = np.where((azs >= 0)   & (azs < 90),  self.min_alt_n,
                   np.where((azs >= 90)  & (azs < 180), self.min_alt_e,
@@ -848,11 +914,9 @@ class MainApp:
         viewing_targets = Targets()
         targets_time = Timing('Targets Time')
         if 'target_group' in viewing_targets.data and viewing_targets.data["target_group"] == "messier":
-            messier_objects = [f"m{m_num}" for m_num in range(1, scan_sky.messier_max)]
-            for obj in messier_objects:
-                self.status_label.config(text=f"Working on: {obj}", fg="green")
-                self.root.update_idletasks()
-                scan_sky.check_sky_tonight(obj)
+            self.status_label.config(text="Processing Messier objects...", fg="green")
+            self.root.update_idletasks()
+            scan_sky.check_all_messier()
             self.status_label.config(text="Messier objects processing complete", fg="green")
             self.root.update_idletasks()
             
