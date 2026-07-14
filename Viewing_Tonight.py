@@ -273,7 +273,8 @@ class Viewing:
     planet_list = ['mercury', 'venus', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune']
     viewing_arr = []
 
-    def __init__(self, location_lat, location_long, location_name, viewing_date):
+    def __init__(self, location_lat, location_long, location_name, viewing_date,
+                 min_alt_n=20, min_alt_e=20, min_alt_s=20, min_alt_w=20):
         self.lat = location_lat
         self.long = location_long
         self.date = self.fix_date(viewing_date)
@@ -282,6 +283,10 @@ class Viewing:
         self.viewing_date_evening = str(datetime.date(int(viewing_date[0:4]), int(viewing_date[5:7]), int(viewing_date[8:10])))
         self.site_name = location_name
         self.site_file_name = self.site_name.replace(' ', '-')
+        self.min_alt_n = min_alt_n
+        self.min_alt_e = min_alt_e
+        self.min_alt_s = min_alt_s
+        self.min_alt_w = min_alt_w
         self.height = get_elevation_in_feet(location_lat, location_long)
         self.viewing_location = EarthLocation(lat=self.lat * u.deg, lon=self.long * u.deg, height=self.height * u.imperial.foot)
         self.utcoffset_int = -4  # need to make this loadable from the viewing location
@@ -471,7 +476,11 @@ class Viewing:
             'date': self.date,
             'utcoffset': self.utcoffset,
             'delta_midnight_linspace': self.delta_midnight,  # Pass the numpy array directly
-            'planet_list': self.planet_list
+            'planet_list': self.planet_list,
+            'min_alt_n': self.min_alt_n,
+            'min_alt_e': self.min_alt_e,
+            'min_alt_s': self.min_alt_s,
+            'min_alt_w': self.min_alt_w,
         }
         
         # Split objects into batches
@@ -523,7 +532,11 @@ class Viewing:
         days    = np.array([t[8:10] for t in iso])
         months  = np.array([t[5:7]  for t in iso])
 
-        candidate_mask    = (alts >= 20) & (alts <= 90) & (minutes < 5)
+        min_alt = np.where((azs >= 0)   & (azs < 90),  self.min_alt_n,
+                  np.where((azs >= 90)  & (azs < 180), self.min_alt_e,
+                  np.where((azs >= 180) & (azs < 270), self.min_alt_s,
+                                                        self.min_alt_w)))
+        candidate_mask    = (alts >= min_alt) & (alts <= 90) & (minutes < 5)
         candidate_indices = np.where(candidate_mask)[0]
 
         object_type = 'Planet'
@@ -556,9 +569,9 @@ class Viewing:
                 self.viewing_index[self.v_i_ctr]      = key
                 self.viewing_dictionary[self.v_i_ctr] = table_row
                 if summary["rise"] == 999:
-                    summary.update({"rise": obs_hour, "type": object_type, "date": obs_date,
+                    summary.update({"rise": obs_hour, "rise_dir": compass, "type": object_type, "date": obs_date,
                                     "filters": suggested_filters, "link": finder_link, "difficulty": difficulty_html})
-                summary.update({"set": obs_hour})
+                summary.update({"set": obs_hour, "set_dir": compass})
                 if d > summary["max_az"]:
                     summary.update({"max_az": d, "max_az_hr": obs_hour})
                 self.v_i_ctr += 1
@@ -586,8 +599,8 @@ class Viewing:
                                  self.viewing_summary_dictionary[obj]['type'].capitalize() + \
                                  '</td><td style="text-align:center">' + \
                                  self.viewing_summary_dictionary[obj]['difficulty'] + '</td><td>' + \
-                                 str(self.viewing_summary_dictionary[obj]['rise']) + '</td><td>' + \
-                                 str(self.viewing_summary_dictionary[obj]['set']) + '</td><td>' + \
+                                 str(self.viewing_summary_dictionary[obj]['rise']) + ' ' + self.viewing_summary_dictionary[obj].get('rise_dir', '') + '</td><td>' + \
+                                 str(self.viewing_summary_dictionary[obj]['set']) + ' ' + self.viewing_summary_dictionary[obj].get('set_dir', '') + '</td><td>' + \
                                  str(int(self.viewing_summary_dictionary[obj]['max_az'])) + '&#0176 @ ' + \
                                  str(self.viewing_summary_dictionary[obj]['max_az_hr']) + '</td><td style="white-space:nowrap">' + \
                                  self.viewing_summary_dictionary[obj]['link'] + '</td><td>' + \
@@ -762,7 +775,15 @@ def process_object_batch(args):
             days    = np.array([t[8:10] for t in iso])
             months  = np.array([t[5:7]  for t in iso])
 
-            candidate_mask    = (alts >= 20) & (alts <= 90) & (minutes < 5)
+            min_alt_n = viewing_params.get('min_alt_n', 20)
+            min_alt_e = viewing_params.get('min_alt_e', 20)
+            min_alt_s = viewing_params.get('min_alt_s', 20)
+            min_alt_w = viewing_params.get('min_alt_w', 20)
+            min_alt = np.where((azs >= 0)   & (azs < 90),  min_alt_n,
+                      np.where((azs >= 90)  & (azs < 180), min_alt_e,
+                      np.where((azs >= 180) & (azs < 270), min_alt_s,
+                                                            min_alt_w)))
+            candidate_mask    = (alts >= min_alt) & (alts <= 90) & (minutes < 5)
             candidate_indices = np.where(candidate_mask)[0]
             v_i_ctr = 0
 
@@ -794,9 +815,9 @@ def process_object_batch(args):
                     key = int(omon) * 10000 + int(oday) * 100 + int(ohour)
                     obj_viewing_data.append((v_i_ctr, key, table_row))
                     if obj_summary["rise"] == 999:
-                        obj_summary.update({"rise": obs_hour, "type": object_type, "date": obs_date,
+                        obj_summary.update({"rise": obs_hour, "rise_dir": compass, "type": object_type, "date": obs_date,
                                             "filters": suggested_filters, "link": finder_link, "difficulty": difficulty_html})
-                    obj_summary.update({"set": obs_hour})
+                    obj_summary.update({"set": obs_hour, "set_dir": compass})
                     if d > obj_summary["max_az"]:
                         obj_summary.update({"max_az": d, "max_az_hr": obs_hour})
                     v_i_ctr += 1
@@ -854,18 +875,29 @@ class MainApp:
         tk.Checkbutton(root, text="Sort summary table by Rise Hour", variable=self.sort_by_rise_var,
                        font=self.font_config).grid(row=3, column=0, columnspan=2, pady=2)
 
+        self.min_alt_entries = {}
+        elev_frame = tk.Frame(root)
+        elev_frame.grid(row=4, column=0, columnspan=2, pady=2)
+        tk.Label(elev_frame, text="Min Elevation (°):", font=self.font_config).pack(side='left', padx=5)
+        for direction in ['N', 'E', 'S', 'W']:
+            tk.Label(elev_frame, text=direction, font=self.font_config).pack(side='left')
+            entry = tk.Entry(elev_frame, width=4, font=self.font_config)
+            entry.insert(0, '20')
+            entry.pack(side='left', padx=3)
+            self.min_alt_entries[direction] = entry
+
         tk.Button(root, text="Load or Save a Location for Reuse", command=self.load_or_save, font=self.font_config)\
-            .grid(row=4, column=0, columnspan=2, pady=5)
+            .grid(row=5, column=0, columnspan=2, pady=5)
         tk.Button(root, text="Save Location", command=self.save_location, font=self.font_config)\
-            .grid(row=5, column=0, pady=5)
+            .grid(row=6, column=0, pady=5)
         tk.Button(root, text="Generate PDF and HTML", command=self.generate_output, font=self.font_config)\
-            .grid(row=5, column=1, pady=5)
+            .grid(row=6, column=1, pady=5)
 
         tk.Button(root, text="Close", command=root.quit, font=self.font_config)\
-            .grid(row=7, column=0, columnspan=2, pady=10)
+            .grid(row=8, column=0, columnspan=2, pady=10)
 
         self.status_label = tk.Label(root, text="Not Started", fg="red", width=50, font=self.font_config)
-        self.status_label.grid(row=6, column=0, columnspan=2)
+        self.status_label.grid(row=7, column=0, columnspan=2)
 
         self._load_default_location()
 
@@ -935,8 +967,16 @@ class MainApp:
         self.status_label.config(text="Generating…", fg="blue")
         self.root.update_idletasks()
 
+        def _parse_min_alt(direction):
+            try:
+                return int(self.min_alt_entries[direction].get())
+            except ValueError:
+                return 20
+
         main_time = Timing('Main Time')
-        scan_sky = Viewing(lat, lon, location_name, date_value)
+        scan_sky = Viewing(lat, lon, location_name, date_value,
+                           min_alt_n=_parse_min_alt('N'), min_alt_e=_parse_min_alt('E'),
+                           min_alt_s=_parse_min_alt('S'), min_alt_w=_parse_min_alt('W'))
 
         # Plot assets…
         scan_sky.plot_sun_moon()
