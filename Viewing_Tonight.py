@@ -509,49 +509,60 @@ class Viewing:
         if obj in self.planet_list:
             sky_obj = get_body(obj, Time(self.date + ' 00:00:00'))
         else:
-            sky_obj = SkyCoord.from_name(obj)
+            ra, dec = self.my_messier.coordinates[obj]
+            sky_obj = SkyCoord(ra=ra * u.deg, dec=dec * u.deg)
         sky_objaltazs_viewing_date = sky_obj.transform_to(self.viewing_frame)
 
-        last_hour = 999
-        for altaz in sky_objaltazs_viewing_date:  # need to parallelize this at some point
-            altitude = altaz.alt
-            (sign, d, m, s) = altitude.signed_dms
-            (zsign, zd, zm, zs) = altaz.az.signed_dms
-            zstr = zsign + zd
-            ohour, omin, odate, oday, omon = str(altaz.obstime)[11:13], str(altaz.obstime)[14:16], str(altaz.obstime)[0:10], str(altaz.obstime)[8:10], str(altaz.obstime)[5:7]
+        alts = sky_objaltazs_viewing_date.alt.deg
+        azs  = sky_objaltazs_viewing_date.az.deg
+        iso  = self.viewing_times.iso
 
-            object_type = 'Planet'
-            suggested_filters = ''
-            finder_link = ''
-            difficulty_html = ''
-            if obj not in self.planet_list:
-                object_type = self.my_messier.object_type[obj]
-                finder_link = f'<a href="https://freestarcharts.com/images/Articles/Messier/Single/{obj.upper()}_Finder_Chart.pdf" target="_blank">Finder Chart</a>'
-                suggested_filters = self.my_messier.messier_filters.get(obj, '')
-                difficulty = self.my_messier.messier_difficulty.get(obj, '')
-                difficulty_html = f'<span class="dot{"green" if difficulty == "easy" else "orange" if difficulty == "medium" else "red"}"></span>' if difficulty else ''
+        hours   = np.array([t[11:13] for t in iso])
+        minutes = np.array([int(t[14:16]) for t in iso])
+        dates   = np.array([t[0:10] for t in iso])
+        days    = np.array([t[8:10] for t in iso])
+        months  = np.array([t[5:7]  for t in iso])
 
-            skip_print = not (0 <= int(omin) < 5 and ohour != last_hour)
-            last_hour = ohour
-            if altitude.is_within_bounds(20 * u.deg, 90 * u.deg) and not skip_print:
+        candidate_mask    = (alts >= 20) & (alts <= 90) & (minutes < 5)
+        candidate_indices = np.where(candidate_mask)[0]
+
+        object_type = 'Planet'
+        suggested_filters = ''
+        finder_link = ''
+        difficulty_html = ''
+        if obj not in self.planet_list:
+            object_type = self.my_messier.object_type[obj]
+            finder_link = f'<a href="https://freestarcharts.com/images/Articles/Messier/Single/{obj.upper()}_Finder_Chart.pdf" target="_blank">Finder Chart</a>'
+            suggested_filters = self.my_messier.messier_filters.get(obj, '')
+            difficulty = self.my_messier.messier_difficulty.get(obj, '')
+            difficulty_html = f'<span class="dot{"green" if difficulty == "easy" else "orange" if difficulty == "medium" else "red"}"></span>' if difficulty else ''
+
+        if len(candidate_indices) > 0:
+            _, unique_first_pos = np.unique(hours[candidate_mask], return_index=True)
+            final_indices = candidate_indices[unique_first_pos]
+            summary = self.viewing_summary_dictionary[obj]
+            for idx in final_indices:
+                d     = int(alts[idx])
+                zstr  = int(azs[idx]) + 1
+                ohour, odate, oday, omon = hours[idx], dates[idx], days[idx], months[idx]
                 obs_date, obs_hour = un_utc(odate, ohour)
-                tr_bgclr = "#d5f5e3" if int(ohour) % 2 == 0 else "#d6eaf8"
-                compass = return_sector(zstr)
+                tr_bgclr  = "#d5f5e3" if int(ohour) % 2 == 0 else "#d6eaf8"
+                compass   = return_sector(zstr)
                 direction = f'{zstr} - {compass}'
-                table_row = f'<tr bgcolor="{tr_bgclr}"><td>{obj.upper()}</td><td>{object_type}</td><td>{obs_date}</td><td>{obs_hour}</td><td>{d}&#730;</td><td>{direction}&#730;</td><td>{suggested_filters}</td><td>{finder_link}</td></tr>\n'
+                table_row = (f'<tr bgcolor="{tr_bgclr}"><td>{obj.upper()}</td><td>{object_type}</td>'
+                             f'<td>{obs_date}</td><td>{obs_hour}</td><td>{d}&#730;</td>'
+                             f'<td>{direction}&#730;</td><td>{suggested_filters}</td><td>{finder_link}</td></tr>\n')
                 key = int(omon) * 10000 + int(oday) * 100 + int(ohour)
-                self.viewing_index[self.v_i_ctr] = key
+                self.viewing_index[self.v_i_ctr]      = key
                 self.viewing_dictionary[self.v_i_ctr] = table_row
-                # Set summary info
-                summary = self.viewing_summary_dictionary[obj]
                 if summary["rise"] == 999:
-                    summary.update({"rise": obs_hour, "type": object_type, "date": obs_date, "filters": suggested_filters, "link": finder_link, "difficulty": difficulty_html})
-                summary.update({"set": obs_hour})   # set to hour found here as this will be the last
+                    summary.update({"rise": obs_hour, "type": object_type, "date": obs_date,
+                                    "filters": suggested_filters, "link": finder_link, "difficulty": difficulty_html})
+                summary.update({"set": obs_hour})
                 if d > summary["max_az"]:
-                    summary.update({"max_az": d, "max_az_hr": obs_hour})  # note d is altitude, not sure why I left that
-                self.viewing_summary_dictionary[obj] = summary
-                # increment Counters
+                    summary.update({"max_az": d, "max_az_hr": obs_hour})
                 self.v_i_ctr += 1
+            self.viewing_summary_dictionary[obj] = summary
         check_time.end_now()
         # check_time.print_delta()
 
@@ -726,55 +737,57 @@ def process_object_batch(args):
             if obj in planet_list:
                 sky_obj = get_body(obj, Time(viewing_params['date'] + ' 00:00:00'))
             else:
-                sky_obj = SkyCoord.from_name(obj)
+                ra, dec = my_messier.coordinates[obj]
+                sky_obj = SkyCoord(ra=ra * u.deg, dec=dec * u.deg)
             sky_objaltazs_viewing_date = sky_obj.transform_to(viewing_frame)
 
-            last_hour = 999
+            alts = sky_objaltazs_viewing_date.alt.deg
+            azs  = sky_objaltazs_viewing_date.az.deg
+            iso  = viewing_times.iso
+
+            hours   = np.array([t[11:13] for t in iso])
+            minutes = np.array([int(t[14:16]) for t in iso])
+            dates   = np.array([t[0:10] for t in iso])
+            days    = np.array([t[8:10] for t in iso])
+            months  = np.array([t[5:7]  for t in iso])
+
+            candidate_mask    = (alts >= 20) & (alts <= 90) & (minutes < 5)
+            candidate_indices = np.where(candidate_mask)[0]
             v_i_ctr = 0
-            
-            for altaz in sky_objaltazs_viewing_date:
-                altitude = altaz.alt
-                if not altitude.is_within_bounds(20 * u.deg, 90 * u.deg):
-                    continue
-                    
-                (sign, d, m, s) = altitude.signed_dms
-                (zsign, zd, zm, zs) = altaz.az.signed_dms
-                zstr = zsign + zd
-                ohour, omin, odate, oday, omon = str(altaz.obstime)[11:13], str(altaz.obstime)[14:16], str(altaz.obstime)[0:10], str(altaz.obstime)[8:10], str(altaz.obstime)[5:7]
 
-                skip_print = not (0 <= int(omin) < 5 and ohour != last_hour)
-                last_hour = ohour
-                
-                if not skip_print:
-                    # Prepare object metadata
-                    object_type = 'Planet'
-                    suggested_filters = ''
-                    finder_link = ''
-                    difficulty_html = ''
-                    if obj not in planet_list:
-                        object_type = my_messier.object_type.get(obj, 'Unknown')
-                        finder_link = f'<a href="https://freestarcharts.com/images/Articles/Messier/Single/{obj.upper()}_Finder_Chart.pdf" target="_blank">Finder Chart</a>'
-                        suggested_filters = my_messier.messier_filters.get(obj, '')
-                        difficulty = my_messier.messier_difficulty.get(obj, '')
-                        difficulty_html = f'<span class="dot{"green" if difficulty == "easy" else "orange" if difficulty == "medium" else "red"}"></span>' if difficulty else ''
+            object_type = 'Planet'
+            suggested_filters = ''
+            finder_link = ''
+            difficulty_html = ''
+            if obj not in planet_list:
+                object_type = my_messier.object_type.get(obj, 'Unknown')
+                finder_link = f'<a href="https://freestarcharts.com/images/Articles/Messier/Single/{obj.upper()}_Finder_Chart.pdf" target="_blank">Finder Chart</a>'
+                suggested_filters = my_messier.messier_filters.get(obj, '')
+                difficulty = my_messier.messier_difficulty.get(obj, '')
+                difficulty_html = f'<span class="dot{"green" if difficulty == "easy" else "orange" if difficulty == "medium" else "red"}"></span>' if difficulty else ''
 
+            if len(candidate_indices) > 0:
+                _, unique_first_pos = np.unique(hours[candidate_mask], return_index=True)
+                final_indices = candidate_indices[unique_first_pos]
+                for idx in final_indices:
+                    d     = int(alts[idx])
+                    zstr  = int(azs[idx]) + 1
+                    ohour, odate, oday, omon = hours[idx], dates[idx], days[idx], months[idx]
                     obs_date, obs_hour = un_utc(odate, ohour)
-                    tr_bgclr = "#d5f5e3" if int(ohour) % 2 == 0 else "#d6eaf8"
-                    compass = return_sector(zstr)
+                    tr_bgclr  = "#d5f5e3" if int(ohour) % 2 == 0 else "#d6eaf8"
+                    compass   = return_sector(zstr)
                     direction = f'{zstr} - {compass}'
-                    
-                    table_row = f'<tr bgcolor="{tr_bgclr}"><td>{obj.upper()}</td><td>{object_type}</td><td>{obs_date}</td><td>{obs_hour}</td><td>{d}&#730;</td><td>{direction}&#730;</td><td>{suggested_filters}</td><td>{finder_link}</td></tr>\n'
+                    table_row = (f'<tr bgcolor="{tr_bgclr}"><td>{obj.upper()}</td><td>{object_type}</td>'
+                                 f'<td>{obs_date}</td><td>{obs_hour}</td><td>{d}&#730;</td>'
+                                 f'<td>{direction}&#730;</td><td>{suggested_filters}</td><td>{finder_link}</td></tr>\n')
                     key = int(omon) * 10000 + int(oday) * 100 + int(ohour)
-                    
                     obj_viewing_data.append((v_i_ctr, key, table_row))
-                    
-                    # Update summary info
                     if obj_summary["rise"] == 999:
-                        obj_summary.update({"rise": obs_hour, "type": object_type, "date": obs_date, "filters": suggested_filters, "link": finder_link, "difficulty": difficulty_html})
+                        obj_summary.update({"rise": obs_hour, "type": object_type, "date": obs_date,
+                                            "filters": suggested_filters, "link": finder_link, "difficulty": difficulty_html})
                     obj_summary.update({"set": obs_hour})
                     if d > obj_summary["max_az"]:
                         obj_summary.update({"max_az": d, "max_az_hr": obs_hour})
-                    
                     v_i_ctr += 1
             
             results[obj] = {
