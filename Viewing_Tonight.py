@@ -614,7 +614,7 @@ def return_sector(degree):
         return "E"
     elif 180 <= degree < 270:
         return "S"
-    elif 270 <= degree < 3590:
+    elif 270 <= degree < 360:
         return "W"
 
 
