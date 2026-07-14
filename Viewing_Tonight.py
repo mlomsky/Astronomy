@@ -776,48 +776,87 @@ class MainApp:
     def __init__(self, root):
         self.root = root
         root.title("Viewing Tonight")
+        root.configure(bg='#0f172a')
+        root.resizable(False, False)
+
         self.location_data = None
-        self.geolocator = Nominatim(user_agent='mainapp_viewer')
+        self.geolocator    = Nominatim(user_agent='mainapp_viewer')
+        self.font_config   = ("Segoe UI", 11)
 
-        # Font configuration
-        self.font_config = ("Arial", 12)
+        # ── Header ──────────────────────────────────────────────────────────
+        hdr = tk.Frame(root, bg='#1e293b', pady=14)
+        hdr.grid(row=0, column=0, columnspan=2, sticky='ew')
+        tk.Label(hdr, text="✦  VIEWING TONIGHT  ✦",
+                 font=("Segoe UI", 16, "bold"), bg='#1e293b', fg='#38bdf8').pack()
+        tk.Label(hdr, text="Night Sky Planner",
+                 font=("Segoe UI", 9), bg='#1e293b', fg='#64748b').pack()
 
-        # Layout setup
-        self.location_name_entry = self._add_row("Enter Location Name:", row=0)
-        self.location_entry = self._add_row("Enter Location (Address, City, State):", row=1)
-        self.date_entry     = self._add_row("Enter Date (YYYY-MM-DD):", row=2)
-        
-        # Set default date to today
-        today = datetime.date.today().strftime('%Y-%m-%d')
-        self.date_entry.insert(0, today)
+        # ── Form fields ─────────────────────────────────────────────────────
+        self.location_name_entry = self._add_row("Location Name",                    row=1)
+        self.location_entry      = self._add_row("Location  (address, city, state)", row=2)
+        self.date_entry          = self._add_row("Date  (YYYY-MM-DD)",               row=3)
+        self.date_entry.insert(0, datetime.date.today().strftime('%Y-%m-%d'))
+
+        # ── Options panel ───────────────────────────────────────────────────
+        opts = tk.Frame(root, bg='#1e293b', padx=16, pady=10)
+        opts.grid(row=4, column=0, columnspan=2, sticky='ew', padx=10, pady=(10, 4))
 
         self.sort_by_rise_var = tk.BooleanVar(value=True)
-        tk.Checkbutton(root, text="Sort summary table by Rise Hour", variable=self.sort_by_rise_var,
-                       font=self.font_config).grid(row=3, column=0, columnspan=2, pady=2)
+        tk.Checkbutton(opts, text="Sort summary table by Rise Hour",
+                       variable=self.sort_by_rise_var,
+                       font=self.font_config, bg='#1e293b', fg='#e2e8f0',
+                       selectcolor='#0f172a', activebackground='#1e293b',
+                       activeforeground='#38bdf8').pack(anchor='w')
 
+        elev_row = tk.Frame(opts, bg='#1e293b')
+        elev_row.pack(anchor='w', pady=(8, 0))
+        tk.Label(elev_row, text="Min Elevation (°):", font=self.font_config,
+                 bg='#1e293b', fg='#94a3b8').pack(side='left', padx=(0, 10))
         self.min_alt_entries = {}
-        elev_frame = tk.Frame(root)
-        elev_frame.grid(row=4, column=0, columnspan=2, pady=2)
-        tk.Label(elev_frame, text="Min Elevation (°):", font=self.font_config).pack(side='left', padx=5)
         for direction in ['N', 'E', 'S', 'W']:
-            tk.Label(elev_frame, text=direction, font=self.font_config).pack(side='left')
-            entry = tk.Entry(elev_frame, width=4, font=self.font_config)
-            entry.insert(0, '20')
-            entry.pack(side='left', padx=3)
-            self.min_alt_entries[direction] = entry
+            tk.Label(elev_row, text=direction, font=("Segoe UI", 11, "bold"),
+                     bg='#1e293b', fg='#38bdf8').pack(side='left')
+            e = tk.Entry(elev_row, width=4, font=self.font_config,
+                         bg='#0f172a', fg='#e2e8f0', insertbackground='#e2e8f0',
+                         relief='flat', highlightthickness=1,
+                         highlightbackground='#475569', highlightcolor='#38bdf8')
+            e.insert(0, '20')
+            e.pack(side='left', padx=(2, 10))
+            self.min_alt_entries[direction] = e
 
-        tk.Button(root, text="Load or Save a Location for Reuse", command=self.load_or_save, font=self.font_config)\
-            .grid(row=5, column=0, columnspan=2, pady=5)
-        tk.Button(root, text="Save Location", command=self.save_location, font=self.font_config)\
-            .grid(row=6, column=0, pady=5)
-        tk.Button(root, text="Generate PDF and HTML", command=self.generate_output, font=self.font_config)\
-            .grid(row=6, column=1, pady=5)
+        # ── Buttons ─────────────────────────────────────────────────────────
+        btn_f = tk.Frame(root, bg='#0f172a', pady=10)
+        btn_f.grid(row=5, column=0, columnspan=2, sticky='ew', padx=14)
 
-        tk.Button(root, text="Close", command=root.quit, font=self.font_config)\
-            .grid(row=8, column=0, columnspan=2, pady=10)
+        _btn = dict(font=("Segoe UI", 11, "bold"), relief='flat',
+                    cursor='hand2', padx=16, pady=8, borderwidth=0)
 
-        self.status_label = tk.Label(root, text="Not Started", fg="red", width=50, font=self.font_config)
-        self.status_label.grid(row=7, column=0, columnspan=2)
+        tk.Button(btn_f, text="Load / Save Location", command=self.load_or_save,
+                  bg='#334155', fg='#e2e8f0',
+                  activebackground='#475569', activeforeground='#e2e8f0',
+                  **_btn).pack(side='left', padx=(0, 6))
+
+        tk.Button(btn_f, text="Generate Report  ›", command=self.generate_output,
+                  bg='#0369a1', fg='white',
+                  activebackground='#0284c7', activeforeground='white',
+                  **_btn).pack(side='left', padx=6)
+
+        tk.Button(btn_f, text="Save Location", command=self.save_location,
+                  bg='#334155', fg='#e2e8f0',
+                  activebackground='#475569', activeforeground='#e2e8f0',
+                  **_btn).pack(side='left', padx=6)
+
+        # ── Status + Close ───────────────────────────────────────────────────
+        self.status_label = tk.Label(root, text="Ready", fg='#64748b',
+                                     bg='#0f172a', font=("Segoe UI", 10), width=55)
+        self.status_label.grid(row=6, column=0, columnspan=2, pady=(4, 2))
+
+        tk.Button(root, text="Close", command=root.quit,
+                  font=("Segoe UI", 11, "bold"), relief='flat',
+                  bg='#7f1d1d', fg='#fca5a5',
+                  activebackground='#991b1b', activeforeground='white',
+                  cursor='hand2', padx=20, pady=8, borderwidth=0
+                  ).grid(row=7, column=0, columnspan=2, pady=(0, 14))
 
         self._load_default_location()
 
@@ -833,9 +872,14 @@ class MainApp:
         self.location_entry.insert(0, full_address)
 
     def _add_row(self, label_text, row):
-        tk.Label(self.root, text=label_text, font=self.font_config).grid(row=row, column=0, padx=5, sticky='e')
-        entry = tk.Entry(self.root, width=50, font=self.font_config)
-        entry.grid(row=row, column=1, padx=5, pady=2)
+        tk.Label(self.root, text=label_text, font=("Segoe UI", 10),
+                 bg='#0f172a', fg='#94a3b8'
+                 ).grid(row=row, column=0, padx=(14, 6), pady=5, sticky='e')
+        entry = tk.Entry(self.root, width=42, font=("Segoe UI", 11),
+                         bg='#1e293b', fg='#e2e8f0', insertbackground='#e2e8f0',
+                         relief='flat', highlightthickness=1,
+                         highlightbackground='#475569', highlightcolor='#38bdf8')
+        entry.grid(row=row, column=1, padx=(6, 14), pady=5, sticky='w')
         return entry
 
     def get_coordinates(self, address):
