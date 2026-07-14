@@ -344,10 +344,13 @@ class Viewing:
         <ul>
         <li><b>Rise Hour</b> indicates the earliest time at which the object may be observed.  The earliest time indicated by
          the Rise Hour column will be sunset; this is because you (typically) won't be able to see the object earlier
-         than sundown.</li>
+         than sundown.  The letter following the hour (N, E, S, or W) indicates the compass quadrant the object is
+         in at that time: N = 0&deg;&ndash;89&deg;, E = 90&deg;&ndash;179&deg;, S = 180&deg;&ndash;269&deg;,
+         W = 270&deg;&ndash;359&deg;.</li>
         <li><b>Set Hour</b> indicates the latest time at which the object may be observed.  The latest time indicated by
          the Set Hour column will be sunrise; this is because you (typically) will no longer be able to see the object
-         after sunrise.</li>
+         after sunrise.  As with Rise Hour, the letter following the hour indicates the compass quadrant the object
+         occupies at that time.</li>
         <li><b>Max Altitude</b> provides the time at which the object will be highest in the sky and how high it will be at
          that time. </li>
         <li><b>Finder Chart</b> contains a link to a star map to help you know what stars are near the object. </li>
@@ -713,7 +716,7 @@ def html_header(location_name, viewing_date, plot_file_name, half_dark_hours, su
 
 def summary_header_row():
     return "<tr><td colspan=9> </td></tr>\n "\
-            "<tr bgcolor=lightgrey><td><b>Object</b></td><td><b>Type</b></td><td><b>Difficulty</b></td>"\
+            "<tr bgcolor=lightgrey style=\"page-break-after:avoid\"><td><b>Object</b></td><td><b>Type</b></td><td><b>Difficulty</b></td>"\
             "<td><b>Rise Hour</b></td><td><b>Set Hour</b></td>" \
             "<td><a href=\"https://en.wikipedia.org/wiki/Horizontal_coordinate_system\"><b>Max Altitude</b></a>" \
             "</td><td><b>Finder Chart</b><br></td><td><b>Suggested Filter</b></td></tr>\n"
