@@ -552,8 +552,16 @@ class Viewing:
         with open('astronomy_report.html', 'w') as f:
             print(self.html, file=f)
 
-    def make_summary_html(self):
-        for obj in self.viewing_summary_dictionary:
+    def make_summary_html(self, sort_by_rise=False):
+        objects = self.viewing_summary_dictionary.keys()
+        if sort_by_rise:
+            def _rise_key(obj):
+                rise = self.viewing_summary_dictionary[obj]['rise']
+                if rise == 999:
+                    return float('inf')
+                return rise if rise >= 12 else rise + 24
+            objects = sorted(objects, key=_rise_key)
+        for obj in objects:
             if self.viewing_summary_dictionary[obj]['rise'] == 999 and self.viewing_summary_dictionary[obj]['set'] == 0:
                 continue
             self.html_summary += '<tr><td>' + obj.capitalize() + '</td><td>' + \
@@ -824,6 +832,10 @@ class MainApp:
         today = datetime.date.today().strftime('%Y-%m-%d')
         self.date_entry.insert(0, today)
 
+        self.sort_by_rise_var = tk.BooleanVar(value=True)
+        tk.Checkbutton(root, text="Sort summary table by Rise Hour", variable=self.sort_by_rise_var,
+                       font=self.font_config).grid(row=3, column=0, columnspan=2, pady=2)
+
         tk.Button(root, text="Load or Save a Location for Reuse", command=self.load_or_save, font=self.font_config)\
             .grid(row=4, column=0, columnspan=2, pady=5)
         tk.Button(root, text="Save Location", command=self.save_location, font=self.font_config)\
@@ -943,7 +955,7 @@ class MainApp:
         scan_sky.sort_data()
         scan_sky.set_html()
         scan_sky.write_out_html()
-        scan_sky.make_summary_html()
+        scan_sky.make_summary_html(sort_by_rise=self.sort_by_rise_var.get())
         scan_sky.write_out_summary_html()
         convert_html_to_pdf(scan_sky.summary_filename, scan_sky.summary_pdf_filename)
 
