@@ -283,7 +283,7 @@ class Viewing:
         self.site_name = location_name
         self.site_file_name = self.site_name.replace(' ', '-')
         self.height = get_elevation_in_feet(location_lat, location_long)
-        self.viewing_location = EarthLocation(lat=self.lat * u.deg, lon=self.long * u.deg, height=self.height * u.m)
+        self.viewing_location = EarthLocation(lat=self.lat * u.deg, lon=self.long * u.deg, height=self.height * u.imperial.foot)
         self.utcoffset_int = -4  # need to make this loadable from the viewing location
         self.utcoffset = self.utcoffset_int * u.hour  # Eastern Daylight Time
         self.viewing_date_midnight_time = self.date + ' 00:00:00'
