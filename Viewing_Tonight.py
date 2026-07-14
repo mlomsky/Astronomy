@@ -837,6 +837,19 @@ class MainApp:
         self.status_label = tk.Label(root, text="Not Started", fg="red", width=50, font=self.font_config)
         self.status_label.grid(row=6, column=0, columnspan=2)
 
+        self._load_default_location()
+
+    def _load_default_location(self):
+        default_path = os.path.join('user_data_folder', 'WPRR.json')
+        if not os.path.isfile(default_path):
+            return
+        with open(default_path, 'r') as f:
+            data = json.load(f)
+        name = data.get('name', '')
+        full_address = f"{data.get('address', '')}, {data.get('city', '')}, {data.get('state', '')}"
+        self.location_name_entry.insert(0, name)
+        self.location_entry.insert(0, full_address)
+
     def _add_row(self, label_text, row):
         tk.Label(self.root, text=label_text, font=self.font_config).grid(row=row, column=0, padx=5, sticky='e')
         entry = tk.Entry(self.root, width=50, font=self.font_config)
