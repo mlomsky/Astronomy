@@ -314,43 +314,25 @@ class Viewing:
         self.my_messier = Messier.MessierData()
 
     def set_summary_page_information(self):
-        pageinfo = """<h2> What is this page for?</h2>
-        The information on this page is intended to help you plan your observing session for the date
-         shown at the top of this page by providing a list of objects which will be visible in the sky over the course
-        of the evening.  The information provided here is applicable to the location shown at the very top of this page.
-        <br>
-        <h3>How to read the chart to the left </h3>
-        <ul>
-        <li>The time axis at the bottom of the chart presents midnight as 0. </li>
-        <li>The red line indicates the sun’s altitude over the course of the charted period.  Sunset (left) and sunrise 
-        (right) occur at the two points where the red line touches the bottom of the chart.</li>
-        <li>The grey shaded areas on the chart indicate twilight periods.  These are the periods when the sun continues
-         to illuminate sky after sunset or begins illuminating the sky before sunrise.</li>
-        <li>The grey dashed line indicates the moon’s altitude over the course of the charted period.  The current 
-        amount of lunar illumination is displayed as a percentage above the chart, with 0% indicating new moon, and 
-        100% indicating a full moon. </li>
-        <li>Ideal conditions for observing deep sky objects will most commonly take place during the period indicated 
-        by the black portion of the chart and with as little moon as possible.</li>
+        pageinfo = """<h3>What is this page?</h3>
+        Lists planets and Messier objects visible from the location and date shown above
+        to help you plan your observing session.
+        <h4>Reading the chart</h4>
+        <ul style="margin:2px 0;padding-left:16px;line-height:1.4">
+        <li>Horizontal axis = hours from midnight (0).</li>
+        <li>Red line = Sun. Where it meets the bottom marks sunset (left) and sunrise (right).</li>
+        <li>Light grey shading = twilight; dark shading = full darkness, best for deep-sky viewing.</li>
+        <li>Dashed grey line = Moon. Illumination % is shown in the chart title.</li>
         </ul>
-        <h2>What is the table below for?</h2>
-        The table below displays a list of planets and Messier objects which will be above the horizon between sunset 
-        and sunrise. 
-        <h3>Below Table Column Explanation</h3>
-        <ul>
-        <li><b>Rise Hour</b> indicates the earliest time at which the object may be observed.  The earliest time indicated by
-         the Rise Hour column will be sunset; this is because you (typically) won't be able to see the object earlier
-         than sundown.</li> 
-        <li><b>Set Hour</b> indicates the latest time at which the object may be observed.  The latest time indicated by
-         the Set Hour column will be sunrise; this is because you (typically) will no longer be able to see the object 
-         after sunrise.</li> 
-        <li><b>Max Altitude</b> provides the time at which the object will be highest in the sky and how high it will be at
-         that time. </li>  
-        <li><b>Finder Chart</b> contains a link to a star map to help you know what stars are near the object. </li>
-        <li><b>Suggested Filter</b> contains information regarding the filter(s) we believe will help reveal the most 
-         detail for an object, but this can be rather subjective.  Brighter objects typically do not require a filter.  
-         Fainter objects may be observed without a filter in ideal conditions, but the right filter can often bring 
-         out additional detail, especially when observing from light-polluted locations.</li>
-         </ul>"""
+        <h4>Table columns</h4>
+        <ul style="margin:2px 0;padding-left:16px;line-height:1.4">
+        <li><b>Rise Hour</b> — earliest the object is observable (no earlier than sunset).</li>
+        <li><b>Set Hour</b> — latest the object is observable (no later than sunrise).</li>
+        <li><b>Max Altitude</b> — highest point reached and when it occurs.</li>
+        <li><b>Finder Chart</b> — star map link to help locate the object.</li>
+        <li><b>Suggested Filter</b> — recommended filter if any. Brighter objects rarely need
+        one; filters help reveal detail on fainter objects, especially from light-polluted sites.</li>
+        </ul>"""
 
         return pageinfo
 
@@ -551,7 +533,7 @@ class Viewing:
                 direction = f'{zstr} - {compass}'
                 table_row = (f'<tr bgcolor="{tr_bgclr}"><td>{obj.upper()}</td><td>{object_type}</td>'
                              f'<td>{obs_date}</td><td>{obs_hour}</td><td>{d}&#730;</td>'
-                             f'<td>{direction}&#730;</td><td>{suggested_filters}</td><td>{finder_link}</td></tr>\n')
+                             f'<td>{direction}&#730;</td><td>{suggested_filters}</td><td style="white-space:nowrap">{finder_link}</td></tr>\n')
                 key = int(omon) * 10000 + int(oday) * 100 + int(ohour)
                 self.viewing_index[self.v_i_ctr]      = key
                 self.viewing_dictionary[self.v_i_ctr] = table_row
@@ -581,7 +563,7 @@ class Viewing:
                                  str(self.viewing_summary_dictionary[obj]['rise']) + '</td><td>' + \
                                  str(self.viewing_summary_dictionary[obj]['set']) + '</td><td>' + \
                                  str(int(self.viewing_summary_dictionary[obj]['max_az'])) + '&#0176 @ ' + \
-                                 str(self.viewing_summary_dictionary[obj]['max_az_hr']) + '</td><td>' + \
+                                 str(self.viewing_summary_dictionary[obj]['max_az_hr']) + '</td><td style="white-space:nowrap">' + \
                                  self.viewing_summary_dictionary[obj]['link'] + '</td><td>' + \
                                  self.viewing_summary_dictionary[obj]['filters'] + '</td></tr>' + "\n"
         self.html_summary = html_header(self.site_name, self.viewing_date_evening, self.plot_file_name,
@@ -658,12 +640,15 @@ def html_header(location_name, viewing_date, plot_file_name, half_dark_hours, su
       border-radius: 50%;\n\
       display: inline-block;\n\
     }\n\
+    .main-table td, .main-table th {\n\
+      font-size: 85%;\n\
+    }\n\
     </style></head>\n<body>\n"  # add location specific information
     html_head += "<h2 style=\"font-family:verdana;\">Viewing Information for {0} On the evening of {1} through the "\
             "following morning</h2>\n".format(location_name, viewing_date)
     html_head += "<table> <tr><td>\n"
     html_head += '<img src="{0}">\n'.format(plot_file_name)
-    html_head += "</td><td> " + summary_page_info + " </td></tr>\n</table>\n"
+    html_head += "</td><td style=\"font-size:9pt;vertical-align:top;padding-left:10px\"> " + summary_page_info + " </td></tr>\n</table>\n"
     #  html_head += "<h2>Viewing Items for {0} on {1}</h2>\n".format(location_name, viewing_date)
     if summary == 'false':
         html_head += "<h3>Azimuth Chart</h3>\n"
@@ -679,10 +664,10 @@ def html_header(location_name, viewing_date, plot_file_name, half_dark_hours, su
         for hour in range(0, half_dark_hours, 1):
             html_head += "<a href = \"#{0}\"> {0} </a> - ".format(hour)
         html_head += "<a href = \"#{0}\"> {0} </a> ".format(half_dark_hours)
-        html_head += "<table>\n"
+        html_head += "<table class=\"main-table\">\n"
         html_head += header_row()
     else:
-        html_head += "<table style=\"font-family:verdana;\">\n"
+        html_head += "<table class=\"main-table\" style=\"font-family:verdana;\">\n"
         html_head += summary_header_row()
     return html_head
 
@@ -779,7 +764,7 @@ def process_object_batch(args):
                     direction = f'{zstr} - {compass}'
                     table_row = (f'<tr bgcolor="{tr_bgclr}"><td>{obj.upper()}</td><td>{object_type}</td>'
                                  f'<td>{obs_date}</td><td>{obs_hour}</td><td>{d}&#730;</td>'
-                                 f'<td>{direction}&#730;</td><td>{suggested_filters}</td><td>{finder_link}</td></tr>\n')
+                                 f'<td>{direction}&#730;</td><td>{suggested_filters}</td><td style="white-space:nowrap">{finder_link}</td></tr>\n')
                     key = int(omon) * 10000 + int(oday) * 100 + int(ohour)
                     obj_viewing_data.append((v_i_ctr, key, table_row))
                     if obj_summary["rise"] == 999:
@@ -802,169 +787,15 @@ def process_object_batch(args):
 
 
 def convert_html_to_pdf(html_filename, pdf_filename):
-    """
-    Convert HTML file to PDF using multiple fallback methods
-    """
-    import subprocess
-    import os
-    
-    success = False
-    
-    # Method 1: Try WeasyPrint (modern, pure Python)
-    try:
-        from weasyprint import HTML, CSS
-        
-        # Custom CSS for better PDF formatting
-        css_string = """
-        @page {
-            size: A4 landscape;
-            margin: 1cm;
-        }
-        
-        body {
-            font-family: Arial, sans-serif;
-            font-size: 10pt;
-        }
-        
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            page-break-inside: avoid;
-        }
-        
-        th, td {
-            border: 1px solid black;
-            padding: 4px;
-            text-align: left;
-        }
-        
-        h1, h2 {
-            page-break-after: avoid;
-        }
-        
-        img {
-            max-width: 100%;
-            height: auto;
-        }
-        
-        a {
-            color: blue;
-            text-decoration: underline;
-        }
-        """
-        
-        css = CSS(string=css_string)
-        HTML(filename=html_filename).write_pdf(pdf_filename, stylesheets=[css])
-        print(f"PDF successfully created using WeasyPrint: {pdf_filename}")
-        success = True
-        
-    except ImportError:
-        print("WeasyPrint not available. Trying alternative methods...")
-    except Exception as e:
-        error_msg = str(e).lower()
-        if 'libgobject' in error_msg or 'cannot load library' in error_msg:
-            print("WeasyPrint installation issue detected (missing system libraries).")
-            print("This is common on Windows. Trying alternative PDF methods...")
-        else:
-            print(f"WeasyPrint failed: {e}. Trying alternative methods...")
-    
-    # Method 2: Try pdfkit if available
-    if not success:
-        try:
-            import pdfkit
-            
-            # Try to find wkhtmltopdf in common locations
-            possible_paths = [
-                r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe',
-                r'C:\Program Files (x86)\wkhtmltopdf\bin\wkhtmltopdf.exe',
-                'wkhtmltopdf'  # If in PATH
-            ]
-            
-            config = None
-            for path in possible_paths:
-                if os.path.exists(path) or path == 'wkhtmltopdf':
-                    try:
-                        config = pdfkit.configuration(wkhtmltopdf=path)
-                        break
-                    except:
-                        continue
-            
-            if config:
-                options = {
-                    'enable-external-links': None,
-                    "enable-local-file-access": None,
-                    'orientation': 'Landscape'
-                }
-                pdfkit.from_file(html_filename, output_path=pdf_filename, configuration=config, options=options)
-                print(f"PDF successfully created using pdfkit: {pdf_filename}")
-                success = True
-            else:
-                print("wkhtmltopdf not found in common locations.")
-                
-        except ImportError:
-            print("pdfkit not available.")
-        except Exception as e:
-            print(f"pdfkit failed: {e}")
-    
-    # Method 3: Try simple browser print method (Windows only)
-    if not success and os.name == 'nt':  # Windows
-        try:
-            # Try to use Chrome/Edge for PDF conversion
-            browsers = [
-                r'C:\Program Files\Google\Chrome\Application\chrome.exe',
-                r'C:\Program Files (x86)\Google\Chrome\Application\chrome.exe',
-                r'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe',
-                r'C:\Program Files\Microsoft\Edge\Application\msedge.exe'
-            ]
-            
-            browser_found = None
-            for browser_path in browsers:
-                if os.path.exists(browser_path):
-                    browser_found = browser_path
-                    break
-            
-            if browser_found:
-                # Convert file path to file:// URL
-                file_url = f"file:///{os.path.abspath(html_filename).replace('\\', '/')}"
-                
-                # Chrome/Edge headless PDF generation
-                cmd = [
-                    browser_found,
-                    '--headless',
-                    '--disable-gpu',
-                    '--print-to-pdf=' + os.path.abspath(pdf_filename),
-                    '--print-to-pdf-no-header',
-                    file_url
-                ]
-                
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-                if result.returncode == 0 and os.path.exists(pdf_filename):
-                    print(f"PDF successfully created using browser: {pdf_filename}")
-                    success = True
-                else:
-                    print("Browser PDF generation failed.")
-            else:
-                print("No suitable browser found for PDF generation.")
-                
-        except Exception as e:
-            print(f"Browser PDF generation failed: {e}")
-    
-    # If all methods fail, provide helpful message
-    if not success:
-        print("\n" + "="*60)
-        print("PDF GENERATION FAILED - but your HTML file is ready!")
-        print("="*60)
-        print(f"Your astronomy report is available as: {html_filename}")
-        print("\nPDF Generation Options:")
-        print("1. Manual: Open the HTML file in your browser and use 'Print → Save as PDF'")
-        print("2. Install pdfkit + wkhtmltopdf:")
-        print("   - pip install pdfkit")
-        print("   - Download wkhtmltopdf from: https://wkhtmltopdf.org/downloads.html")
-        print("3. WeasyPrint alternative (if libraries issue persists):")
-        print("   - Try: pip uninstall weasyprint")
-        print("   - Then: pip install weasyprint")
-        print("   - Or use conda: conda install -c conda-forge weasyprint")
-        print("="*60)
+    from playwright.sync_api import sync_playwright
+    file_url = 'file:///' + os.path.abspath(html_filename).replace('\\', '/')
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page()
+        page.goto(file_url, wait_until='networkidle')
+        page.pdf(path=pdf_filename, format='A4', landscape=True, print_background=True)
+        browser.close()
+    print(f"PDF created: {pdf_filename}")
 
 
 
