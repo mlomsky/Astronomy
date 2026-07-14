@@ -429,11 +429,12 @@ class Viewing:
             last_alt = altaz.alt
 
     def plot_sun_moon(self):
+        plt.figure()
         plt.style.use(astropy_mpl_style)
         quantity_support()
 
         # Create Sun Moon Plot
-        sunaltazs_viewing_date = get_sun(self.midnight).transform_to(self.sun_moon_viewing_frame)
+        sunaltazs_viewing_date = get_sun(self.sun_moon_viewing_times).transform_to(self.sun_moon_viewing_frame)
         moonaltazs = get_body("moon", self.sun_moon_viewing_times).transform_to(self.sun_moon_viewing_frame)
 
         plt.plot(self.sun_moon_delta_midnight, moonaltazs.alt, '--', color='gray', label='Moon')
